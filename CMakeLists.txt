@@ -9,7 +9,6 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 find_package(Boost ${Boost_VERSION_MAJOR} ${Boost_COMPONENTS} )
 
-find_package (TBB REQUIRED tbb)
 
 find_package(OpenGL REQUIRED)
 
@@ -25,9 +24,9 @@ file(GLOB SOURCES
     *.hpp
     *.cpp)
 
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pedantic -ltbb -Wall -Wextra -lGLEW -lglut -lGL -lGLU")
+set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pedantic -Wall -Wextra -lGLEW -lglut -lGL -lGLU")
 #set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ftemplate-depth=900")
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 
-target_link_libraries (${PROJECT_NAME} TBB::tbb ${Boost_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARY})
+target_link_libraries (${PROJECT_NAME} ${Boost_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARY})
