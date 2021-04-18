@@ -1,5 +1,7 @@
 #pragma once
 
+#define TBB_PREVIEW_BLOCKED_RANGE_ND 1
+
 #include <type_traits>
 
 #include <boost/multi_array.hpp>
@@ -8,6 +10,10 @@
 #include <boost/proto/context.hpp>
 #include <boost/random.hpp>
 #include <boost/noncopyable.hpp>
+
+#include <tbb/parallel_for.h>
+#include <tbb/blocked_rangeNd.h>
+
 namespace mpl = boost::mpl;
 namespace proto = boost::proto;
 
@@ -16,28 +22,6 @@ struct IsMatrix : mpl::false_ {};
 template<typename Matrix>
 struct IsMatrix<Matrix, std::void_t<decltype (std::declval<Matrix&>().is_Matrix())> > : mpl::true_  {};
 
-template<typename T, typename Matrix, typename = std::enable_if_t<IsMatrix<Matrix>::value> >
-inline void rand_matrix(Matrix& A, T min, T max) {
-    std::time_t now = std::time(0);
-    boost::random::mt19937 gen{static_cast<std::uint32_t>(now)};
-        if constexpr(std::is_integral_v<T>) {
-            boost::random::uniform_int_distribution<> dist{min, max};
-            for(size_t i = 0; i < A.shape()[0]; ++i)
-                for(size_t j = 0; j < A.shape()[1]; ++j)
-                    for(size_t k = 0; k < A.shape()[2]; ++k)
-                        for(size_t l = 0; l < A.shape()[3]; ++l)
-                            A[i][j][k][l] = dist(gen);
-        }
-        if constexpr(!std::is_integral_v<T>) {
-            boost::random::uniform_real_distribution<> dist{min, max};
-            for(size_t i = 0; i < A.shape()[0]; ++i)
-                for(size_t j = 0; j < A.shape()[1]; ++j)
-                    for(size_t k = 0; k < A.shape()[2]; ++k)
-                        for(size_t l = 0; l < A.shape()[3]; ++l)
-                            A[i][j][k][l] = dist(gen);
-        }
-
-}
 namespace _spatial {
 
 template<typename T>
@@ -52,8 +36,8 @@ struct matrix4_ : boost::multi_array<T, 4> {
     typedef T value_type;
     array_type MTRX;
 public:
-    matrix4_(const std::array<index_type, 4>& shape) : array_type(shape) {}
-    matrix4_(size_t N, size_t M, size_t K, size_t L) : array_type({boost::extents[N][M][K][L]}) {}
+    constexpr matrix4_(const std::array<index_type, 4>& shape) : array_type(shape) {}
+    constexpr matrix4_(size_t N, size_t M, size_t K, size_t L) : array_type({boost::extents[N][M][K][L]}) {}
 
     constexpr void is_Matrix() {}
 
@@ -152,6 +136,7 @@ struct Matrix4D_expr : proto::extends<Expr, Matrix4D_expr<Expr>, Matrix4D_domain
 template<typename T>
 struct Matrix4D : Matrix4D_expr<typename proto::terminal< matrix4_<T>>::type> {
     using expr_type = typename proto::terminal< matrix4_<T>>::type;
+    using range_tbb = tbb::blocked_rangeNd<size_t, 4>;
 
     using array_type = typename matrix4_<T>::array_type;
     using range = boost::multi_array_types::index_range;
@@ -160,7 +145,7 @@ struct Matrix4D : Matrix4D_expr<typename proto::terminal< matrix4_<T>>::type> {
 
     const std::array<index_type, 4>& shape_;
 
-    Matrix4D(const std::array<index_type, 4>& shape) :
+    constexpr Matrix4D(const std::array<index_type, 4>& shape) :
         Matrix4D_expr<expr_type>(expr_type::make(matrix4_<T>(shape))), shape_(shape) {
 
     }
@@ -169,55 +154,121 @@ struct Matrix4D : Matrix4D_expr<typename proto::terminal< matrix4_<T>>::type> {
         return proto::value(*this).shape()[i];
     }
     void Random(T min, T max) {
-        rand_matrix(proto::value(*this), min, max);
+        std::time_t now = std::time(0);
+        boost::random::mt19937 gen{static_cast<std::uint32_t>(now)};
+            if constexpr(std::is_integral_v<T>) {
+                tbb::parallel_for(range_tbb({0, size(0)}, {0, size(1)}, {0, size(2)}, {0, size(3)}),
+                [&](const range_tbb& out){
+                auto out_i = out.dim(0);
+                auto out_j = out.dim(1);
+                auto out_k = out.dim(2);
+                auto out_l = out.dim(3);
+                boost::random::uniform_int_distribution<> dist{min, max};
+                for(std::size_t i = out_i.begin(); i < out_i.end(); ++i)
+                    for(std::size_t j = out_j.begin(); j < out_j.end(); ++j)
+                        for(std::size_t k = out_k.begin(); k < out_k.end(); ++k)
+                            for(std::size_t l = out_l.begin(); l < out_l.end(); ++l)
+                                proto::value(*this)(i, j, k, l) = dist(gen);
+                }, tbb::static_partitioner());
+            }
+            if constexpr(!std::is_integral_v<T>) {
+                tbb::parallel_for(range_tbb({0, size(0)}, {0, size(1)}, {0, size(2)}, {0, size(3)}),
+                [&](const range_tbb& out){
+                auto out_i = out.dim(0);
+                auto out_j = out.dim(1);
+                auto out_k = out.dim(2);
+                auto out_l = out.dim(3);
+                boost::random::uniform_real_distribution<> dist{min, max};
+                for(std::size_t i = out_i.begin(); i < out_i.end(); ++i)
+                    for(std::size_t j = out_j.begin(); j < out_j.end(); ++j)
+                        for(std::size_t k = out_k.begin(); k < out_k.end(); ++k)
+                            for(std::size_t l = out_l.begin(); l < out_l.end(); ++l)
+                                proto::value(*this)(i, j, k, l) = dist(gen);
+                }, tbb::static_partitioner());
+            }
     }
     template< typename Expr >
     Matrix4D<T> &operator = (Expr const & expr) {
         SizeMatrix4D_context const sizes(size(0), size(1), size(2), size(3));
         proto::eval(proto::as_expr<Matrix4D_domain>(expr), sizes);
-        for(std::size_t i = 0; i < size(0); ++i)
-            for(std::size_t j = 0; j < size(1); ++j)
-                for(std::size_t k = 0; k < size(2); ++k)
-                    for(std::size_t l = 0; l < size(3); ++l)
+        tbb::parallel_for(range_tbb({0, size(0)}, {0, size(1)}, {0, size(2)}, {0, size(3)}),
+        [&](const range_tbb& out){
+        auto out_i = out.dim(0);
+        auto out_j = out.dim(1);
+        auto out_k = out.dim(2);
+        auto out_l = out.dim(3);
+        for(std::size_t i = out_i.begin(); i < out_i.end(); ++i)
+            for(std::size_t j = out_j.begin(); j < out_j.end(); ++j)
+                for(std::size_t k = out_k.begin(); k < out_k.end(); ++k)
+                    for(std::size_t l = out_l.begin(); l < out_l.end(); ++l)
                         proto::value(*this)(i, j, k, l) = expr(i, j, k, l);
+        });
         return *this;
     }
     template< typename Expr >
     Matrix4D<T> &operator += (Expr const & expr) {
         SizeMatrix4D_context const sizes(size(0), size(1), size(2), size(3));
         proto::eval(proto::as_expr<Matrix4D_domain>(expr), sizes);
-        for(std::size_t i = 0; i < size(0); ++i)
-            for(std::size_t j = 0; j < size(1); ++j)
-                for(std::size_t k = 0; k < size(2); ++k)
-                    for(std::size_t l = 0; l < size(3); ++l)
+        tbb::parallel_for(range_tbb({0, size(0)}, {0, size(1)}, {0, size(2)}, {0, size(3)}),
+        [&](const range_tbb& out){
+        auto out_i = out.dim(0);
+        auto out_j = out.dim(1);
+        auto out_k = out.dim(2);
+        auto out_l = out.dim(3);
+        for(std::size_t i = out_i.begin(); i < out_i.end(); ++i)
+            for(std::size_t j = out_j.begin(); j < out_j.end(); ++j)
+                for(std::size_t k = out_k.begin(); k < out_k.end(); ++k)
+                    for(std::size_t l = out_l.begin(); l < out_l.end(); ++l)
                         proto::value(*this)(i, j, k, l) += expr(i, j, k, l);
+        });
         return *this;
     }
     Matrix4D<T> operator + (const T val) {
         Matrix4D<T> matrix(shape_);
-        for(std::size_t i = 0; i < size(0); ++i)
-            for(std::size_t j = 0; j < size(1); ++j)
-                for(std::size_t k = 0; k < size(2); ++k)
-                    for(std::size_t l = 0; l < size(3); ++l)
+        tbb::parallel_for(range_tbb({0, size(0)}, {0, size(1)}, {0, size(2)}, {0, size(3)}),
+        [&](const range_tbb& out){
+        auto out_i = out.dim(0);
+        auto out_j = out.dim(1);
+        auto out_k = out.dim(2);
+        auto out_l = out.dim(3);
+        for(std::size_t i = out_i.begin(); i < out_i.end(); ++i)
+            for(std::size_t j = out_j.begin(); j < out_j.end(); ++j)
+                for(std::size_t k = out_k.begin(); k < out_k.end(); ++k)
+                    for(std::size_t l = out_l.begin(); l < out_l.end(); ++l)
                         proto::value(matrix)(i, j, k, l) = proto::value(*this)(i, j, k, l) + val;
+        });
         return matrix;
     }
     Matrix4D<T> operator * (const T val) {
         Matrix4D<T> matrix(shape_);
-        for(std::size_t i = 0; i < size(0); ++i)
-            for(std::size_t j = 0; j < size(1); ++j)
-                for(std::size_t k = 0; k < size(2); ++k)
-                    for(std::size_t l = 0; l < size(3); ++l)
+        tbb::parallel_for(range_tbb({0, size(0)}, {0, size(1)}, {0, size(2)}, {0, size(3)}),
+        [&](const range_tbb& out){
+        auto out_i = out.dim(0);
+        auto out_j = out.dim(1);
+        auto out_k = out.dim(2);
+        auto out_l = out.dim(3);
+        for(std::size_t i = out_i.begin(); i < out_i.end(); ++i)
+            for(std::size_t j = out_j.begin(); j < out_j.end(); ++j)
+                for(std::size_t k = out_k.begin(); k < out_k.end(); ++k)
+                    for(std::size_t l = out_l.begin(); l < out_l.end(); ++l)
                         proto::value(matrix)(i, j, k, l) = proto::value(*this)(i, j, k, l) * val;
+        });
         return matrix;
     }
     Matrix4D<T> operator / (const T val) {
         Matrix4D<T> matrix(shape_);
-        for(std::size_t i = 0; i < size(0); ++i)
-            for(std::size_t j = 0; j < size(1); ++j)
-                for(std::size_t k = 0; k < size(2); ++k)
-                    for(std::size_t l = 0; l < size(3); ++l)
+        tbb::parallel_for(range_tbb({0, size(0)}, {0, size(1)}, {0, size(2)}, {0, size(3)}),
+        [&](const range_tbb& out){
+        auto out_i = out.dim(0);
+        auto out_j = out.dim(1);
+        auto out_k = out.dim(2);
+        auto out_l = out.dim(3);
+        for(std::size_t i = out_i.begin(); i < out_i.end(); ++i)
+            for(std::size_t j = out_j.begin(); j < out_j.end(); ++j)
+                for(std::size_t k = out_k.begin(); k < out_k.end(); ++k)
+                    for(std::size_t l = out_l.begin(); l < out_l.end(); ++l)
                         proto::value(matrix)(i, j, k, l) = proto::value(*this)(i, j, k, l) / val;
+        });
         return matrix;
     }
     decltype(auto) transversal_section(char index) {
@@ -227,7 +278,7 @@ struct Matrix4D : Matrix4D_expr<typename proto::terminal< matrix4_<T>>::type> {
         std::vector<std::array<size_t, 4> > index_vector;
         if(index == 'i'){
             for (index_type j = 0; j != size(1); ++j) {
-                for (index_type k = j; k != size(2); ++k) {
+                for (index_type k = 0; k != size(2); ++k) {
                     for (index_type l = 0; l != size(3); ++l) {
                         if((j + k) == size(0)) {
                             transversal_vector.push_back({proto::value(*this)[ indices[range(0, size(0))][j][k][l] ]});
@@ -308,6 +359,8 @@ struct Matrix4D : Matrix4D_expr<typename proto::terminal< matrix4_<T>>::type> {
             } os << std::endl;
             return os;
         }
+private:
+
 };
 
 }

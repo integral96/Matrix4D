@@ -10,6 +10,8 @@
 #include <vector>
 #include <iostream>
 
+#include <boost/timer/timer.hpp>
+
 /* OpenGL and friends */
 #ifdef USEGLEW
 #include <GL/glew.h>
@@ -42,10 +44,10 @@ static float t{};
 static constexpr int sampleMin = 0;
 static constexpr int sampleMax = 5;
 
-static constexpr int NI = 4;
-static constexpr int NJ = 4;
-static constexpr int NK = 4;
-static constexpr int NL = 4;
+static constexpr int NI = 6;
+static constexpr int NJ = 6;
+static constexpr int NK = 6;
+static constexpr int NL = 6;
 
 using namespace _spatial;
 typedef boost::multi_array<int, 4> array_type;
@@ -166,6 +168,7 @@ inline void initlights(void)
 
 inline void drawSurface() {
     try {
+        boost::timer::cpu_timer tmr;
         Matrix4D<int> A(shape), B(shape), C(shape);
 
         A.Random(1, 5);
@@ -204,6 +207,7 @@ inline void drawSurface() {
             print(buffer);
           }
           glFlush();
+          std::cout << "UPDATE: " << tmr.format() << std::endl;
 
     }  catch (std::exception& e) {
         std::cerr << "ERROR_poison***********" << e.what() << std::endl;
