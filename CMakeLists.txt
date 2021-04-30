@@ -25,8 +25,8 @@ if(NOT DEFINED OpenGL_GL_PREFERENCE)
 endif()
 
 file(GLOB SOURCES
-    *.hpp
-    *.cpp)
+    include/*.hpp
+    sources/*.cpp)
 
 set (CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -ltbb -pedantic -pthread -Wall -Wextra -lGLEW -lglut -lGL -lGLU")
 #set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ftemplate-depth=2900")
