@@ -83,15 +83,16 @@ template<typename T>
 struct Matrix2D : Matrix2D_expr<typename proto::terminal< matrix2_<T>>::type> {
     using expr_type = typename proto::terminal< matrix2_<T>>::type;
     using range_tbb = tbb::blocked_rangeNd<size_t, 2>;
+    using range3_tbb = tbb::blocked_rangeNd<size_t, 3>;
 
     using array_type = typename matrix2_<T>::array_type;
     using range = boost::multi_array_types::index_range;
     using index_type = typename  array_type::index;
     using sub_matrix_view1D = typename matrix2_<T>::sub_matrix_view1D;
 
-    const std::array<index_type, 2>& shape_;
+    const std::array<size_t, 2>& shape_;
 
-    constexpr Matrix2D(const std::array<index_type, 2>& shape) :
+    constexpr Matrix2D(const std::array<size_t, 2>& shape) :
         Matrix2D_expr<expr_type>(expr_type::make(matrix2_<T>(shape))), shape_(shape) {
 
     }
@@ -153,6 +154,23 @@ struct Matrix2D : Matrix2D_expr<typename proto::terminal< matrix2_<T>>::type> {
         });
         return *this;
     }
+    Matrix2D<T> operator * (Matrix2D<T> const & matr1) {
+        SizeMatrix2D_context const sizes(size(0), size(1));
+        proto::eval(proto::as_expr<Matrix2D_domain>(matr1), sizes);
+        Matrix2D<T> matrix(shape_);
+        tbb::parallel_for(range3_tbb({0, size(0)}, {0, size(1)}, {0, size(1)}),
+        [&](const range3_tbb& out){
+        auto out_i = out.dim(0);
+        auto out_j = out.dim(1);
+        auto out_k = out.dim(2);
+        for(size_t i = out_i.begin(); i < out_i.end(); ++i)
+            for(size_t j = out_j.begin(); j < out_j.end(); ++j)
+                for(size_t k = out_k.begin(); k < out_k.end(); ++k)
+                        proto::value(matrix)(i, j) += proto::value(*this)(i, k)*matr1(k, j);
+        });
+        return matrix;
+    }
+
     Matrix2D<T> operator + (const T val) const {
         Matrix2D<T> matrix(shape_);
         tbb::parallel_for(range_tbb({0, size(0)}, {0, size(1)}),
@@ -177,6 +195,7 @@ struct Matrix2D : Matrix2D_expr<typename proto::terminal< matrix2_<T>>::type> {
         });
         return matrix;
     }
+
     Matrix2D<T> operator / (const T val) const {
         Matrix2D<T> matrix(shape_);
         tbb::parallel_for(range_tbb({0, size(0)}, {0, size(1)}),

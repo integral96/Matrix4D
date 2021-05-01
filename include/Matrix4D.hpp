@@ -94,12 +94,11 @@ struct Matrix4D : Matrix4D_expr<typename proto::terminal< matrix4_<T>>::type> {
 
     using array_type = typename matrix4_<T>::array_type;
     using range = boost::multi_array_types::index_range;
-    using index_type = typename  array_type::index;
     using sub_matrix_view1D = typename matrix4_<T>::sub_matrix_view1D;
 
-    const std::array<index_type, 4>& shape_;
+    const std::array<size_t, 4>& shape_;
 
-    constexpr Matrix4D(const std::array<index_type, 4>& shape) :
+    constexpr Matrix4D(const std::array<size_t, 4>& shape) :
         Matrix4D_expr<expr_type>(expr_type::make(matrix4_<T>(shape))), shape_(shape) {
 
     }

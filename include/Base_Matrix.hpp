@@ -25,10 +25,9 @@ struct matrix1_ : boost::multi_array<T, 1> {
     typedef boost::multi_array<T, 1> array_type;
     typedef boost::multi_array_types::index_range range;
     typedef typename array_type::template array_view<1>::type sub_matrix_view1D;
-    typedef typename array_type::index index_type;
     typedef T value_type;
 public:
-    constexpr matrix1_(const std::array<index_type, 1>& shape) : array_type(shape) {}
+    constexpr matrix1_(const std::array<size_t, 1>& shape) : array_type(shape) {}
     constexpr matrix1_(size_t N) : array_type({boost::extents[N]}) {}
 
     constexpr void is_Matrix() {}
@@ -48,10 +47,9 @@ struct matrix2_ : boost::multi_array<T, 2> {
     typedef boost::multi_array_types::index_range range;
     typedef typename array_type::template array_view<1>::type sub_matrix_view1D;
     typedef typename array_type::template array_view<2>::type sub_matrix_view2D;
-    typedef typename array_type::index index_type;
     typedef T value_type;
 public:
-    constexpr matrix2_(const std::array<index_type, 2>& shape) : array_type(shape) {}
+    constexpr matrix2_(const std::array<size_t, 2>& shape) : array_type(shape) {}
     constexpr matrix2_(size_t N, size_t M) : array_type({boost::extents[N][M]}) {}
 
     constexpr void is_Matrix() {}
@@ -72,10 +70,9 @@ struct matrix3_ : boost::multi_array<T, 3> {
     typedef typename array_type::template array_view<1>::type sub_matrix_view1D;
     typedef typename array_type::template array_view<2>::type sub_matrix_view2D;
     typedef typename array_type::template array_view<3>::type sub_matrix_view3D;
-    typedef typename array_type::index index_type;
     typedef T value_type;
 public:
-    constexpr matrix3_(const std::array<index_type, 3>& shape) : array_type(shape) {}
+    constexpr matrix3_(const std::array<size_t, 3>& shape) : array_type(shape) {}
     constexpr matrix3_(size_t N, size_t M, size_t K) : array_type({boost::extents[N][M][K]}) {}
 
     constexpr void is_Matrix() {}
@@ -97,11 +94,10 @@ struct matrix4_ : boost::multi_array<T, 4> {
     typedef typename array_type::template array_view<2>::type sub_matrix_view2D;
     typedef typename array_type::template array_view<3>::type sub_matrix_view3D;
     typedef typename array_type::template array_view<4>::type sub_matrix_view4D;
-    typedef typename array_type::index index_type;
     typedef T value_type;
     array_type MTRX;
 public:
-    constexpr matrix4_(const std::array<index_type, 4>& shape) : array_type(shape) {}
+    constexpr matrix4_(const std::array<size_t, 4>& shape) : array_type(shape) {}
     constexpr matrix4_(size_t N, size_t M, size_t K, size_t L) : array_type({boost::extents[N][M][K][L]}) {}
 
     constexpr void is_Matrix() {}

@@ -84,12 +84,11 @@ struct Matrix1D : Matrix1D_expr<typename proto::terminal< matrix1_<T>>::type> {
 
     using array_type = typename matrix1_<T>::array_type;
     using range = boost::multi_array_types::index_range;
-    using index_type = typename  array_type::index;
     using sub_matrix_view1D = typename matrix1_<T>::sub_matrix_view1D;
 
-    const std::array<index_type, 1>& shape_;
+    const std::array<size_t, 1>& shape_;
 
-    constexpr Matrix1D(const std::array<index_type, 1>& shape) :
+    constexpr Matrix1D(const std::array<size_t, 1>& shape) :
         Matrix1D_expr<expr_type>(expr_type::make(matrix1_<T>(shape))), shape_(shape) {
 
     }

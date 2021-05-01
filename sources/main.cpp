@@ -15,10 +15,11 @@ static constexpr int NJ = 6;
 static constexpr int NK = 6;
 static constexpr int NL = 6;
 
-typedef boost::multi_array<int, 4> array_type;
-static const std::array<array_type::index, 1> shape1D = {{NI}};
-static const std::array<array_type::index, 2> shape2D = {{NI, NJ}};
-static const std::array<array_type::index, 4> shape4D = {{NI, NJ, NK, NL}};
+
+static const std::array<size_t, 1> shape1D = {{NI}};
+static const std::array<size_t, 2> shape2D = {{NI, NJ}};
+static const std::array<size_t, 3> shape3D = {{NI, NJ, NK}};
+static const std::array<size_t, 4> shape4D = {{NI, NJ, NK, NL}};
 
 int main(int argc, char** argv)
 {
@@ -45,14 +46,23 @@ int main(int argc, char** argv)
         MATRIX<2, int> B2(shape2D);
         MATRIX<2, int> C2(shape2D);
 
+        MATRIX<3, int> A3(shape3D);
+        MATRIX<3, int> B3(shape3D);
+        MATRIX<3, int> C3(shape3D);
+
         MATRIX<4, int> AA(shape4D);
         MATRIX<4, int> BB(shape4D);
         MATRIX<4, int> CC(shape4D);
         std::cout << "CTOR MATRIX" << tmr.format() << std::endl;
         A1.Random(0, 5);
         B1.Random(0, 3);
+
         A2.Random(0, 5);
         B2.Random(0, 3);
+
+        A3.Random(0, 5);
+        B3.Random(0, 3);
+
         AA.Random(0, 5);
         BB.Random(0, 3);
         std::cout << "RANDOM MATRIX" << tmr.format() << std::endl;
@@ -71,11 +81,20 @@ int main(int argc, char** argv)
         auto start2D = std::chrono::system_clock::now();
         size_t count2D{};
         do {
-            B2 += (A2 + (B2*125));
+            C2 += ((A2*B2) + ((A2*B2)*125));
             count2D++;
         } while (std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - start2D).count() < 20);
-//        std::cout << B1 << std::endl;
+//        std::cout << SD << std::endl;
         std::cout << "END TEST MATRIX_2D, ITERATION = " << count2D << tmr.format() << std::endl;
+        std::cout << "START TEST MATRIX_3D ..." << std::endl;
+        auto start3D = std::chrono::system_clock::now();
+        size_t count3D{};
+        do {
+            C3 += (A3 + (B3*125));
+            count3D++;
+        } while (std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - start3D).count() < 20);
+//        std::cout << SD << std::endl;
+        std::cout << "END TEST MATRIX_3D, ITERATION = " << count3D << tmr.format() << std::endl;
         std::cout << "START TEST MATRIX_4D ..." << std::endl;
         auto start4D = std::chrono::system_clock::now();
         size_t count4D{};
