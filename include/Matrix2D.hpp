@@ -91,6 +91,7 @@ namespace _spatial {
         using range = boost::multi_array_types::index_range;
         using index_type = typename  array_type::index;
         using sub_matrix_view1D = typename matrix2_<T>::sub_matrix_view1D;
+        using sub_matrix_view2D = typename matrix2_<T>::sub_matrix_view2D;
 
         const std::array<size_t, 2>& shape_;
 
@@ -139,6 +140,19 @@ namespace _spatial {
                     for (size_t i = out_i.begin(); i < out_i.end(); ++i)
                         for (size_t j = out_j.begin(); j < out_j.end(); ++j)
                             proto::value(*this)(i, j) = expr(i, j);
+                });
+            return *this;
+        }
+        Matrix2D<T>& operator = (sub_matrix_view2D const& mtrx) {
+            SizeMatrix2D_context const sizes(size(0), size(1));
+            proto::eval(proto::as_expr<Matrix2D_domain>(mtrx), sizes);
+            tbb::parallel_for(range_tbb({ 0, size(0) }, { 0, size(1) }),
+                [&](const range_tbb& out) {
+                    auto out_i = out.dim(0);
+                    auto out_j = out.dim(1);
+                    for (size_t i = out_i.begin(); i < out_i.end(); ++i)
+                        for (size_t j = out_j.begin(); j < out_j.end(); ++j)
+                            proto::value(*this)(i, j) = mtrx[i][j];
                 });
             return *this;
         }
