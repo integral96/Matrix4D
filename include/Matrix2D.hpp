@@ -1,5 +1,5 @@
 #pragma once
-#include "Matrix1D.hpp"
+#include <include/Matrix1D.hpp>
 
 #include <tbb/parallel_reduce.h>
 
@@ -105,29 +105,19 @@ namespace _spatial {
         }
         void Random(T min, T max) {
             std::time_t now = std::time(0);
-            boost::random::mt19937 gen{ static_cast<std::uint32_t>(now) };
-            if constexpr (std::is_integral_v<T>) {
-                tbb::parallel_for(range_tbb({ 0, size(0) }, { 0, size(1) }),
-                    [&](const range_tbb& out) {
-                        const auto& out_i = out.dim(0);
-                        const auto& out_j = out.dim(1);
-                        boost::random::uniform_int_distribution<> dist{ min, max };
-                        for (size_t i = out_i.begin(); i < out_i.end(); ++i)
-                            for (size_t j = out_j.begin(); j < out_j.end(); ++j)
-                                proto::value(*this)(i, j) = dist(gen);
-                    }, tbb::static_partitioner());
-            }
-            if constexpr (!std::is_integral_v<T>) {
-                tbb::parallel_for(range_tbb({ 0, size(0) }, { 0, size(1) }),
-                    [&](const range_tbb& out) {
-                        auto out_i = out.dim(0);
-                        auto out_j = out.dim(1);
-                        boost::random::uniform_real_distribution<> dist{ min, max };
-                        for (size_t i = out_i.begin(); i < out_i.end(); ++i)
-                            for (size_t j = out_j.begin(); j < out_j.end(); ++j)
-                                proto::value(*this)(i, j) = dist(gen);
-                    }, tbb::static_partitioner());
-            }
+            boost::random::mt19937 gen{static_cast<std::uint32_t>(now)};
+                if constexpr(std::is_integral_v<T>) {
+                    boost::random::uniform_int_distribution<> dist{min, max};
+                    for(size_t i = 0; i < size(0); ++i)
+                        for(size_t j = 0; j < size(1); ++j)
+                                    proto::value(*this)(i, j) = dist(gen);
+                }
+                if constexpr(!std::is_integral_v<T>) {
+                    boost::random::uniform_real_distribution<> dist{min, max};
+                    for(size_t i = 0; i < size(0); ++i)
+                        for(size_t j = 0; j < size(1); ++j)
+                                    proto::value(*this)(i, j) = dist(gen);
+                }
         }
         template< typename Expr >
         Matrix2D<T>& operator = (Expr const& expr) {
@@ -156,6 +146,7 @@ namespace _spatial {
                 });
             return *this;
         }
+
         template< typename Expr >
         Matrix2D<T>& operator += (Expr const& expr) {
             SizeMatrix2D_context const sizes(size(0), size(1));
@@ -227,10 +218,10 @@ namespace _spatial {
         }
 
         T DET() {
-            BOOST_ASSERT_MSG((size(0) == size(1)), "Матрица должна быть квадратная");
+            BOOST_ASSERT_MSG((size(0) == size(1)), "2D Матрица должна быть квадратная");
 
             return tbb::parallel_reduce(tbb::blocked_range<size_t>(0, size(0)), 1.0,
-                [=](const tbb::blocked_range<size_t>& r, T tmp) ->T {
+                [=](const tbb::blocked_range<size_t>& r, T tmp) {
                     for (size_t i = r.begin(); i != r.end(); ++i) {
                         size_t k = i;
                         for (size_t j = i + 1; j < size(0); ++j)
@@ -256,7 +247,7 @@ namespace _spatial {
                                     proto::value(*this)(j, l) -= proto::value(*this)(i, l) * proto::value(*this)(j, i);
                             }
                         }
-                    } return tmp; }, std::minus<T>());
+                    } return tmp; }, std::multiplies<T>());
         }
 
 

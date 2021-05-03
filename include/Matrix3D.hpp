@@ -1,5 +1,5 @@
 #pragma once
-#include "Matrix2D.hpp"
+#include <include/Matrix2D.hpp>
 
 namespace _spatial {
 
@@ -92,6 +92,7 @@ namespace _spatial {
         using array_type = typename matrix3_<T>::array_type;
         using range = boost::multi_array_types::index_range;
         using sub_matrix_view2D = typename matrix3_<T>::sub_matrix_view2D;
+        using sub_matrix_view3D = typename matrix3_<T>::sub_matrix_view3D;
 
         const std::array<size_t, 3>& shape_;
 
@@ -105,33 +106,21 @@ namespace _spatial {
         }
         void Random(T min, T max) {
             std::time_t now = std::time(0);
-            boost::random::mt19937 gen{ static_cast<std::uint32_t>(now) };
-            if constexpr (std::is_integral_v<T>) {
-                tbb::parallel_for(range_tbb({ 0, size(0) }, { 0, size(1) }, { 0, size(2) }),
-                    [&](const range_tbb& out) {
-                        const auto& out_i = out.dim(0);
-                        const auto& out_j = out.dim(1);
-                        const auto& out_k = out.dim(2);
-                        boost::random::uniform_int_distribution<> dist{ min, max };
-                        for (size_t i = out_i.begin(); i < out_i.end(); ++i)
-                            for (size_t j = out_j.begin(); j < out_j.end(); ++j)
-                                for (size_t k = out_k.begin(); k < out_k.end(); ++k)
+            boost::random::mt19937 gen{static_cast<std::uint32_t>(now)};
+                if constexpr(std::is_integral_v<T>) {
+                    boost::random::uniform_int_distribution<> dist{min, max};
+                    for(size_t i = 0; i < size(0); ++i)
+                        for(size_t j = 0; j < size(1); ++j)
+                            for(size_t k = 0; k < size(2); ++k)
                                     proto::value(*this)(i, j, k) = dist(gen);
-                    }, tbb::static_partitioner());
-            }
-            if constexpr (!std::is_integral_v<T>) {
-                tbb::parallel_for(range_tbb({ 0, size(0) }, { 0, size(1) }, { 0, size(2) }),
-                    [&](const range_tbb& out) {
-                        const auto& out_i = out.dim(0);
-                        const auto& out_j = out.dim(1);
-                        const auto& out_k = out.dim(2);
-                        boost::random::uniform_real_distribution<> dist{ min, max };
-                        for (size_t i = out_i.begin(); i < out_i.end(); ++i)
-                            for (size_t j = out_j.begin(); j < out_j.end(); ++j)
-                                for (size_t k = out_k.begin(); k < out_k.end(); ++k)
+                }
+                if constexpr(!std::is_integral_v<T>) {
+                    boost::random::uniform_real_distribution<> dist{min, max};
+                    for(size_t i = 0; i < size(0); ++i)
+                        for(size_t j = 0; j < size(1); ++j)
+                            for(size_t k = 0; k < size(2); ++k)
                                     proto::value(*this)(i, j, k) = dist(gen);
-                    }, tbb::static_partitioner());
-            }
+                }
         }
         template< typename Expr >
         Matrix3D<T>& operator = (Expr const& expr) {
@@ -146,6 +135,21 @@ namespace _spatial {
                         for (size_t j = out_j.begin(); j < out_j.end(); ++j)
                             for (size_t k = out_k.begin(); k < out_k.end(); ++k)
                                 proto::value(*this)(i, j, k) = expr(i, j, k);
+                });
+            return *this;
+        }
+        Matrix3D<T>& operator = (sub_matrix_view3D const& expr) {
+            SizeMatrix3D_context const sizes(size(0), size(1), size(2));
+            proto::eval(proto::as_expr<Matrix3D_domain>(expr), sizes);
+            tbb::parallel_for(range_tbb({ 0, size(0) }, { 0, size(1) }, { 0, size(2) }),
+                [&](const range_tbb& out) {
+                    const auto& out_i = out.dim(0);
+                    const auto& out_j = out.dim(1);
+                    const auto& out_k = out.dim(2);
+                    for (size_t i = out_i.begin(); i < out_i.end(); ++i)
+                        for (size_t j = out_j.begin(); j < out_j.end(); ++j)
+                            for (size_t k = out_k.begin(); k < out_k.end(); ++k)
+                                proto::value(*this)(i, j, k) = expr[i][j][k];
                 });
             return *this;
         }
@@ -209,7 +213,7 @@ namespace _spatial {
         }
 
         std::vector<Matrix2D<T>> transversal(char index)  {
-            BOOST_ASSERT_MSG((index == 'i') || (index == 'j') || (index == 'k') || (index == 'l'), "Не совпадение индексов");
+            BOOST_ASSERT_MSG((index == 'i') || (index == 'j') || (index == 'k') , "Не совпадение индексов");
             typename array_type::index_gen indices;
             std::array<size_t, 2> shi{ {size(1), size(2)} };
             std::array<size_t, 2> shj{ {size(0), size(2)} };
@@ -237,6 +241,31 @@ namespace _spatial {
                 }
             }
             return transversal_vector;
+        }
+        int64_t DET_orient(char index) {
+            BOOST_ASSERT_MSG((index == 'i') || (index == 'j') || (index == 'k') , "Не совпадение индексов");
+            if(index == 'i') {
+                return tbb::parallel_reduce(tbb::blocked_range<size_t>(0, size(0)), 1.0,
+                        [=](const tbb::blocked_range<size_t>& r, T tmp) {
+                            for (size_t i = r.begin(); i != r.end(); ++i) {
+                                tmp *= transversal('i')[i].DET();
+                            } return tmp; }, std::multiplies<T>());
+            } else if(index == 'j') {
+                return tbb::parallel_reduce(tbb::blocked_range<size_t>(0, size(1)), 1.0,
+                        [=](const tbb::blocked_range<size_t>& r, T tmp) {
+                            for (size_t i = r.begin(); i != r.end(); ++i) {
+                                tmp *= transversal('j')[i].DET();
+                            } return tmp; }, std::multiplies<T>());
+            } else if(index == 'k') {
+                return tbb::parallel_reduce(tbb::blocked_range<size_t>(0, size(2)), 1.0,
+                        [=](const tbb::blocked_range<size_t>& r, T tmp) {
+                            for (size_t i = r.begin(); i != r.end(); ++i) {
+                                tmp *= transversal('k')[i].DET();
+                            } return tmp; }, std::multiplies<T>());
+            }
+        }
+        int64_t DET_FULL() {
+            return DET_orient('i')*DET_orient('j')*DET_orient('k');
         }
 
         friend std::ostream& operator << (std::ostream& os, const Matrix3D<T>& A) {
