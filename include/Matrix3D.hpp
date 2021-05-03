@@ -215,11 +215,9 @@ namespace _spatial {
         std::vector<Matrix2D<T>> transversal(char index)  {
             BOOST_ASSERT_MSG((index == 'i') || (index == 'j') || (index == 'k') , "Не совпадение индексов");
             typename array_type::index_gen indices;
-            std::array<size_t, 2> shi{ {size(1), size(2)} };
-            std::array<size_t, 2> shj{ {size(0), size(2)} };
-            std::array<size_t, 2> shk{ {size(0), size(1)} };
             std::vector<Matrix2D<T>> transversal_vector;
             if (index == 'i') {
+                std::array<size_t, 2> shi{ {size(1), size(2)} };
                 for (size_t i = 0; i != size(0); ++i) {
                     auto tmp = std::make_unique<Matrix2D<T>>(shi);
                     *tmp = proto::value(*this)[indices[i][range(0, size(1))][range(0, size(2))]];
@@ -227,6 +225,7 @@ namespace _spatial {
                 }
             }
             else if (index == 'j') {
+                std::array<size_t, 2> shj{ {size(0), size(2)} };
                 for (size_t j = 0; j != size(1); ++j) {
                     auto tmp = std::make_unique<Matrix2D<T>>(shj);
                     *tmp = proto::value(*this)[indices[range(0, size(0))][j][range(0, size(2))]];
@@ -234,6 +233,7 @@ namespace _spatial {
                 }
             }
             else if (index == 'k') {
+                std::array<size_t, 2> shk{ {size(0), size(1)} };
                 for (size_t k = 0; k != size(2); ++k) {
                     auto tmp = std::make_unique<Matrix2D<T>>(shk);
                     *tmp = proto::value(*this)[indices[range(0, size(0))][range(0, size(1))][k]];

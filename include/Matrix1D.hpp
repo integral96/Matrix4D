@@ -95,25 +95,17 @@ namespace _spatial {
         }
         virtual void Random(T min, T max) {
             std::time_t now = std::time(0);
-            boost::random::mt19937 gen{ static_cast<std::uint32_t>(now) };
-            if constexpr (std::is_integral_v<T>) {
-                tbb::parallel_for(range_tbb({ 0, size() }),
-                    [&](const range_tbb& out) {
-                        auto out_i = out.dim(0);
-                        boost::random::uniform_int_distribution<> dist{ min, max };
-                        for (size_t i = out_i.begin(); i < out_i.end(); ++i)
-                            proto::value(*this)(i) = dist(gen);
-                    }, tbb::static_partitioner());
-            }
-            if constexpr (!std::is_integral_v<T>) {
-                tbb::parallel_for(range_tbb({ 0, size() }),
-                    [&](const range_tbb& out) {
-                        auto out_i = out.dim(0);
-                        boost::random::uniform_real_distribution<> dist{ min, max };
-                        for (size_t i = out_i.begin(); i < out_i.end(); ++i)
-                            proto::value(*this)(i) = dist(gen);
-                    }, tbb::static_partitioner());
-            }
+            boost::random::mt19937 gen{static_cast<std::uint32_t>(now)};
+                if constexpr(std::is_integral_v<T>) {
+                    boost::random::uniform_int_distribution<> dist{min, max};
+                    for(size_t i = 0; i < size(0); ++i)
+                        proto::value(*this)(i) = dist(gen);
+                }
+                if constexpr(!std::is_integral_v<T>) {
+                    boost::random::uniform_real_distribution<> dist{min, max};
+                    for(size_t i = 0; i < size(0); ++i)
+                        proto::value(*this)(i) = dist(gen);
+                }
         }
         template< typename Expr >
         Matrix1D<T>& operator = (Expr const& expr) {

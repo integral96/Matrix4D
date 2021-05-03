@@ -214,11 +214,8 @@ struct Matrix4D : Matrix4D_expr<typename proto::terminal< matrix4_<T>>::type> {
         BOOST_ASSERT_MSG((index == 'i') || (index == 'j') || (index == 'k') || (index == 'l'), "Не совпадение индексов");
         typename array_type::index_gen indices;
         std::vector<Matrix3D<T>> transversal_vector;
-        std::array<size_t, 3> shi{ {size(1), size(2), size(3)} };
-        std::array<size_t, 3> shj{ {size(0), size(2), size(3)} };
-        std::array<size_t, 3> shk{ {size(0), size(1), size(3)} };
-        std::array<size_t, 3> shl{ {size(0), size(1), size(2)} };
         if (index == 'i') {
+            std::array<size_t, 3> shi{ {size(1), size(2), size(3)} };
             for (size_t i = 0; i != size(0); ++i) {
                 auto tmp = std::make_unique<Matrix3D<T>>(shi);
                 *tmp = proto::value(*this)[indices[i][range(0, size(1))][range(0, size(2))][range(0, size(3))]];
@@ -226,6 +223,7 @@ struct Matrix4D : Matrix4D_expr<typename proto::terminal< matrix4_<T>>::type> {
             }
         }
         else if (index == 'j') {
+            std::array<size_t, 3> shj{ {size(0), size(2), size(3)} };
             for (size_t j = 0; j != size(1); ++j) {
                 auto tmp = std::make_unique<Matrix3D<T>>(shj);
                 *tmp = proto::value(*this)[indices[range(0, size(0))][j][range(0, size(2))][range(0, size(3))]];
@@ -233,6 +231,7 @@ struct Matrix4D : Matrix4D_expr<typename proto::terminal< matrix4_<T>>::type> {
             }
         }
         else if (index == 'k') {
+            std::array<size_t, 3> shk{ {size(0), size(1), size(3)} };
             for (size_t k = 0; k != size(2); ++k) {
                 auto tmp = std::make_unique<Matrix3D<T>>(shk);
                 *tmp = proto::value(*this)[indices[range(0, size(0))][range(0, size(1))][k][range(0, size(3))]];
@@ -240,6 +239,7 @@ struct Matrix4D : Matrix4D_expr<typename proto::terminal< matrix4_<T>>::type> {
             }
         }
         else if (index == 'l') {
+            std::array<size_t, 3> shl{ {size(0), size(1), size(2)} };
             for (size_t l = 0; l != size(3); ++l) {
                 auto tmp = std::make_unique<Matrix3D<T>>(shl);
                 *tmp = proto::value(*this)[indices[range(0, size(0))][range(0, size(1))][range(0, size(2))][l]];
