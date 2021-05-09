@@ -107,15 +107,15 @@ namespace _spatial {
         void Random(T min, T max) {
             std::time_t now = std::time(0);
             boost::random::mt19937 gen{static_cast<std::uint32_t>(now)};
-                if constexpr(std::is_integral_v<T>) {
-                    boost::random::uniform_int_distribution<> dist{min, max};
+                if constexpr(std::is_integral_v<T> || IsBigInt<T>::value) {
+                    boost::random::uniform_int_distribution<> dist{int(min), int(max)};
                     for(size_t i = 0; i < size(0); ++i)
                         for(size_t j = 0; j < size(1); ++j)
                             for(size_t k = 0; k < size(2); ++k)
                                     proto::value(*this)(i, j, k) = dist(gen);
                 }
                 if constexpr(!std::is_integral_v<T>) {
-                    boost::random::uniform_real_distribution<> dist{min, max};
+                    boost::random::uniform_real_distribution<> dist{double(min), double(max)};
                     for(size_t i = 0; i < size(0); ++i)
                         for(size_t j = 0; j < size(1); ++j)
                             for(size_t k = 0; k < size(2); ++k)
@@ -212,60 +212,105 @@ namespace _spatial {
             return matrix;
         }
 
-        std::vector<Matrix2D<T>> transversal(char index)  {
+        Matrix2D<T> transversal_matrix(char index, int N) {
             BOOST_ASSERT_MSG((index == 'i') || (index == 'j') || (index == 'k') , "Не совпадение индексов");
             typename array_type::index_gen indices;
-            std::vector<Matrix2D<T>> transversal_vector;
             if (index == 'i') {
                 std::array<size_t, 2> shi{ {size(1), size(2)} };
-                for (size_t i = 0; i != size(0); ++i) {
-                    auto tmp = std::make_unique<Matrix2D<T>>(shi);
-                    *tmp = proto::value(*this)[indices[i][range(0, size(1))][range(0, size(2))]];
-                    transversal_vector.push_back(*tmp);
-                }
-            }
-            else if (index == 'j') {
+                Matrix2D<T> tmp(shi);
+                tmp = proto::value(*this)[indices[N][range(0, size(1))][range(0, size(2))]];
+                return tmp;
+            } else if (index == 'j') {
                 std::array<size_t, 2> shj{ {size(0), size(2)} };
-                for (size_t j = 0; j != size(1); ++j) {
-                    auto tmp = std::make_unique<Matrix2D<T>>(shj);
-                    *tmp = proto::value(*this)[indices[range(0, size(0))][j][range(0, size(2))]];
-                    transversal_vector.push_back(*tmp);
-                }
-            }
-            else if (index == 'k') {
+                Matrix2D<T> tmp(shj);
+                tmp = proto::value(*this)[indices[range(0, size(0))][N][range(0, size(2))]];
+                return tmp;
+            } else if (index == 'k') {
                 std::array<size_t, 2> shk{ {size(0), size(1)} };
-                for (size_t k = 0; k != size(2); ++k) {
-                    auto tmp = std::make_unique<Matrix2D<T>>(shk);
-                    *tmp = proto::value(*this)[indices[range(0, size(0))][range(0, size(1))][k]];
-                    transversal_vector.push_back(*tmp);
+                Matrix2D<T> tmp(shk);
+                tmp = proto::value(*this)[indices[range(0, size(0))][range(0, size(1))][N]];
+                return tmp;
+            }
+        }
+        std::vector<T> transversal_vector(char index, int N)  {
+            BOOST_ASSERT_MSG((index == 'i') || (index == 'j') || (index == 'k') , "Не совпадение индексов");
+            typename array_type::index_gen indices;
+            std::vector<T> transversal_vector;
+            auto predicate([](int Index, int J, int K) -> bool {
+                int j; int M = 3; std::array<int, 3> a{Index, J, K};
+                do {
+                    j = Index - 1;
+                    while ((j != -1) && (a[j] >= a[j + 1])) j--;
+                    if (j == -1) return false;
+                    int k = Index - 1;
+                    while (a[j] >= a[k]) k--;
+                    _my::swap(a, j, k);
+                    int l = j + 1, r = Index - 1;
+                    while (l < r)
+                    _my::swap(a, l++, r--);
+                } while (j > M - 1);
+                return true;
+            });
+            if (index == 'i') {
+                for (size_t j = 0; j != size(1); ++j) {
+                    for (size_t k = 0; k != size(2); ++k) {
+                        if(predicate(int(N), int(j), int(k))){
+                            transversal_vector.push_back(transversal_matrix('i', N)(j, k));
+                        }
+                    }
+                }
+            } else if (index == 'j') {
+                for (size_t i = 0; i != size(0); ++i) {
+                    for (size_t k = 0; k != size(2); ++k) {
+                        if(predicate(int(N), int(i), int(k))){
+                            transversal_vector.push_back(transversal_matrix('j', N)(i, k));
+                        }
+                    }
+                }
+            } else if (index == 'k') {
+                for (size_t i = 0; i != size(0); ++i) {
+                    for (size_t j = 0; j != size(1); ++j) {
+                        if(predicate(int(N), int(i), int(j))){
+                            transversal_vector.push_back(transversal_matrix('k', N)(i, j));
+                        }
+                    }
                 }
             }
             return transversal_vector;
         }
-        int64_t DET_orient(char index) {
+        T DET_orient(char index, int N) {
             BOOST_ASSERT_MSG((index == 'i') || (index == 'j') || (index == 'k') , "Не совпадение индексов");
             if(index == 'i') {
-                return tbb::parallel_reduce(tbb::blocked_range<size_t>(0, size(0)), 1.0,
+                return tbb::parallel_reduce(tbb::blocked_range<size_t>(0, size(0)), T(1),
                         [=](const tbb::blocked_range<size_t>& r, T tmp) {
                             for (size_t i = r.begin(); i != r.end(); ++i) {
-                                tmp *= transversal('i')[i].DET();
+                                tmp *= transversal_vector('i', N)[i];
                             } return tmp; }, std::multiplies<T>());
             } else if(index == 'j') {
-                return tbb::parallel_reduce(tbb::blocked_range<size_t>(0, size(1)), 1.0,
+                return tbb::parallel_reduce(tbb::blocked_range<size_t>(0, size(1)), 1,
                         [=](const tbb::blocked_range<size_t>& r, T tmp) {
                             for (size_t i = r.begin(); i != r.end(); ++i) {
-                                tmp *= transversal('j')[i].DET();
+                                tmp *= transversal_vector('j', N)[i];
                             } return tmp; }, std::multiplies<T>());
             } else if(index == 'k') {
-                return tbb::parallel_reduce(tbb::blocked_range<size_t>(0, size(2)), 1.0,
+                return tbb::parallel_reduce(tbb::blocked_range<size_t>(0, size(2)), 1,
                         [=](const tbb::blocked_range<size_t>& r, T tmp) {
                             for (size_t i = r.begin(); i != r.end(); ++i) {
-                                tmp *= transversal('k')[i].DET();
+                                tmp *= transversal_vector('k', N)[i];
                             } return tmp; }, std::multiplies<T>());
             }
         }
-        int64_t DET_FULL() {
-            return DET_orient('i')*DET_orient('j')*DET_orient('k');
+        T DET_FULL() {
+            return tbb::parallel_reduce(range_tbb({ 1, size(0) }, { 1, size(1) }, { 1, size(2) }), T(0),
+                    [=](const range_tbb& out, T tmp) {
+                    const auto& out_i = out.dim(0);
+                    const auto& out_j = out.dim(1);
+                    const auto& out_k = out.dim(2);
+                    for (size_t i = out_i.begin(); i < out_i.end(); ++i)
+                        for (size_t j = out_j.begin(); j < out_j.end(); ++j)
+                            for (size_t k = out_k.begin(); k < out_k.end(); ++k)
+                                tmp += std::pow(-1, _my::invers<3>(i, j, k))*DET_orient('i', i)*DET_orient('j', j)*DET_orient('k', k);
+                    return tmp; }, std::plus<T>() );
         }
 
         friend std::ostream& operator << (std::ostream& os, const Matrix3D<T>& A) {

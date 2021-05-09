@@ -106,14 +106,14 @@ namespace _spatial {
         void Random(T min, T max) {
             std::time_t now = std::time(0);
             boost::random::mt19937 gen{static_cast<std::uint32_t>(now)};
-                if constexpr(std::is_integral_v<T>) {
-                    boost::random::uniform_int_distribution<> dist{min, max};
+                if constexpr(std::is_integral_v<T> || IsBigInt<T>::value) {
+                    boost::random::uniform_int_distribution<> dist{int(min), int(max)};
                     for(size_t i = 0; i < size(0); ++i)
                         for(size_t j = 0; j < size(1); ++j)
                                     proto::value(*this)(i, j) = dist(gen);
                 }
                 if constexpr(!std::is_integral_v<T>) {
-                    boost::random::uniform_real_distribution<> dist{min, max};
+                    boost::random::uniform_real_distribution<> dist{double(min), double(max)};
                     for(size_t i = 0; i < size(0); ++i)
                         for(size_t j = 0; j < size(1); ++j)
                                     proto::value(*this)(i, j) = dist(gen);
@@ -220,16 +220,16 @@ namespace _spatial {
         T DET() {
             BOOST_ASSERT_MSG((size(0) == size(1)), "2D Матрица должна быть квадратная");
 
-            return tbb::parallel_reduce(tbb::blocked_range<size_t>(0, size(0)), 1.0,
+            return tbb::parallel_reduce(tbb::blocked_range<size_t>(0, size(0)), T(1),
                 [=](const tbb::blocked_range<size_t>& r, T tmp) {
                     for (size_t i = r.begin(); i != r.end(); ++i) {
                         size_t k = i;
                         for (size_t j = i + 1; j < size(0); ++j)
-                            if (std::abs(proto::value(*this)(j, i)) > std::abs(proto::value(*this)(k, i))) {
+                            if (_my::abs(proto::value(*this)(j, i)) > _my::abs(proto::value(*this)(k, i))) {
                                 k = j;
                                 //proto::value(*this)(k, i) = proto::value(*this)(j, i);
                             }
-                        if (std::abs(proto::value(*this)(k, i)) < 1E-9) {
+                        if (_my::abs(proto::value(*this)(k, i)) < T(1E-9)) {
                             tmp = T(0);
                         }
                         if (k != i) {
@@ -238,11 +238,11 @@ namespace _spatial {
                         }
                         tmp *= proto::value(*this)(i, i);
                         for (size_t j = i + 1; j < size(0); ++j) {
-                            if (proto::value(*this)(i, i) != 0)
+                            if (proto::value(*this)(i, i) != T(0))
                                 proto::value(*this)(i, j) /= proto::value(*this)(i, i);
                         }
                         for (size_t j = 0; j < size(0); ++j) {
-                            if (j != i && std::abs(proto::value(*this)(j, i)) > 1E-9) {
+                            if (j != i && _my::abs(proto::value(*this)(j, i)) > T(1E-9)) {
                                 for (size_t l = i + 1; l < size(0); ++l)
                                     proto::value(*this)(j, l) -= proto::value(*this)(i, l) * proto::value(*this)(j, i);
                             }

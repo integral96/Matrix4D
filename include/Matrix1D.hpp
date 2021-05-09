@@ -96,13 +96,13 @@ namespace _spatial {
         virtual void Random(T min, T max) {
             std::time_t now = std::time(0);
             boost::random::mt19937 gen{static_cast<std::uint32_t>(now)};
-                if constexpr(std::is_integral_v<T>) {
-                    boost::random::uniform_int_distribution<> dist{min, max};
+                if constexpr(std::is_integral_v<T> || IsBigInt<T>::value) {
+                    boost::random::uniform_int_distribution<> dist{int(min), int(max)};
                     for(size_t i = 0; i < size(0); ++i)
                         proto::value(*this)(i) = dist(gen);
                 }
                 if constexpr(!std::is_integral_v<T>) {
-                    boost::random::uniform_real_distribution<> dist{min, max};
+                    boost::random::uniform_real_distribution<> dist{double(min), double(max)};
                     for(size_t i = 0; i < size(0); ++i)
                         proto::value(*this)(i) = dist(gen);
                 }
