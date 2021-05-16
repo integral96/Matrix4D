@@ -106,8 +106,8 @@ struct Matrix4D : Matrix4D_expr<typename proto::terminal< matrix4_<T>>::type> {
         BOOST_ASSERT_MSG((i < 4), "Error i >= 4");
         return proto::value(*this).shape()[i];
     }
-    void Random(T min, T max) {
-        std::time_t now = std::time(0);
+    void Random(T min, T max, long shift = 0) {
+        std::time_t now = std::time(&shift);
         boost::random::mt19937 gen{static_cast<std::uint32_t>(now)};
             if constexpr(std::is_integral_v<T> || IsBigInt<T>::value) {
                 boost::random::uniform_int_distribution<> dist{int(min), int(max)};

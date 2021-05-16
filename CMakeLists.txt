@@ -2,7 +2,9 @@ cmake_minimum_required(VERSION 3.5)
 
 project(Matrix4D ${PROJECT_NAME} LANGUAGES CXX )
 
-set(CMAKE_CXX_STANDARD 17)
+#set(CMAKE_CXX_COMPILER "/opt/intel/oneapi/compiler/2021.2.0/linux/bin/dpcpp")
+
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 #set(Boost_USE_MULTITHREADED ON)

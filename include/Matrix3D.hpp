@@ -104,8 +104,8 @@ namespace _spatial {
             BOOST_ASSERT_MSG((i < 3), "Error i >= 4");
             return proto::value(*this).shape()[i];
         }
-        void Random(T min, T max) {
-            std::time_t now = std::time(0);
+        void Random(T min, T max, long shift = 0) {
+            std::time_t now = std::time(&shift);
             boost::random::mt19937 gen{static_cast<std::uint32_t>(now)};
                 if constexpr(std::is_integral_v<T> || IsBigInt<T>::value) {
                     boost::random::uniform_int_distribution<> dist{int(min), int(max)};
@@ -287,13 +287,13 @@ namespace _spatial {
                                 tmp *= transversal_vector('i', N)[i];
                             } return tmp; }, std::multiplies<T>());
             } else if(index == 'j') {
-                return tbb::parallel_reduce(tbb::blocked_range<size_t>(0, size(1)), 1,
+                return tbb::parallel_reduce(tbb::blocked_range<size_t>(0, size(1)), T(1),
                         [=](const tbb::blocked_range<size_t>& r, T tmp) {
                             for (size_t i = r.begin(); i != r.end(); ++i) {
                                 tmp *= transversal_vector('j', N)[i];
                             } return tmp; }, std::multiplies<T>());
             } else if(index == 'k') {
-                return tbb::parallel_reduce(tbb::blocked_range<size_t>(0, size(2)), 1,
+                return tbb::parallel_reduce(tbb::blocked_range<size_t>(0, size(2)), T(1),
                         [=](const tbb::blocked_range<size_t>& r, T tmp) {
                             for (size_t i = r.begin(); i != r.end(); ++i) {
                                 tmp *= transversal_vector('k', N)[i];

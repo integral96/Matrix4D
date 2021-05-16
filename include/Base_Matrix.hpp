@@ -160,17 +160,13 @@ template<typename T>
 inline T abs(const T& x) {
     return (x < 0) ? -x : x;
 }
+template<typename Array>
+void swap(Array& a, int i, int j) {
+    int s = a[i];
+    a[i] = a[j];
+    a[j] = s;
+}
 
-void swap(std::array<int, 3>& a, int i, int j) {
-    int s = a[i];
-    a[i] = a[j];
-    a[j] = s;
-}
-void swap(std::array<int, 4>& a, int i, int j) {
-    int s = a[i];
-    a[i] = a[j];
-    a[j] = s;
-}
 struct print_type
 {
     template <class T>
