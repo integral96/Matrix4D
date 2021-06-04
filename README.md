@@ -17,15 +17,18 @@ CTOR MATRIX_3D ...
 Determinant of matrix 3D orientation i = 0; 5.10213
 Determinant of matrix 3D orientation i = 1; 2.90522
 Determinant of matrix 3D orientation i = 2; 3.58653
-======================================
+
+
 Determinant of matrix 3D orientation j = 0; 6.43065
 Determinant of matrix 3D orientation j = 1; 3.22516
 Determinant of matrix 3D orientation j = 2; 2.6191
-======================================
+
+
 Determinant of matrix 3D orientation k = 0; 3.89617
 Determinant of matrix 3D orientation k = 1; 3.72256
 Determinant of matrix 3D orientation k = 2; 3.34864
-======================================
+
+
 The complete determinant of the matrix 4D = 1427.42
 END TEST MATRIX_3D, ITERATION = ,  0.007213s wall, 0.240000s user + 0.050000s system = 0.290000s CPU (4020.7%)
 
@@ -34,18 +37,22 @@ CTOR MATRIX_4D ...
 Determinant of matrix 4D orientation i = 0; 5.10213
 Determinant of matrix 4D orientation i = 1; 3.79751
 Determinant of matrix 4D orientation i = 2; 8.18951
-======================================
+
+
 Determinant of matrix 4D orientation j = 0; 4.45647
 Determinant of matrix 4D orientation j = 1; 3.87193
 Determinant of matrix 4D orientation j = 2; 3.58653
-======================================
+
+
 Determinant of matrix 4D orientation k = 0; 5.61687
 Determinant of matrix 4D orientation k = 1; 3.22516
 Determinant of matrix 4D orientation k = 2; 2.98424
-======================================
+
+
 Determinant of matrix 4D orientation l = 0; 5.61687
 Determinant of matrix 4D orientation l = 1; 3.22516
 Determinant of matrix 4D orientation l = 2; 3.07765
-======================================
+
+
 The complete determinant of the matrix 4D = 5589.63
 END TEST MATRIX_4D, ITERATION = ,  0.044341s wall, 2.960000s user + 0.020000s system = 2.980000s CPU (6720.6%)
