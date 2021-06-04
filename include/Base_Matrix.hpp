@@ -160,9 +160,9 @@ template<typename T>
 inline T abs(const T& x) {
     return (x < 0) ? -x : x;
 }
-template<typename Array>
-void swap(Array& a, int i, int j) {
-    int s = a[i];
+template<typename T, template<typename Elem, typename = std::allocator<Elem>> class Array = std::vector>
+void swap(Array<T>& a, int i, int j) {
+    T s = a[i];
     a[i] = a[j];
     a[j] = s;
 }

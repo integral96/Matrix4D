@@ -236,41 +236,52 @@ namespace _spatial {
             BOOST_ASSERT_MSG((index == 'i') || (index == 'j') || (index == 'k') , "Не совпадение индексов");
             typename array_type::index_gen indices;
             std::vector<T> transversal_vector;
-            auto predicate([](int Index, int J, int K) -> bool {
-                int j; int M = 3; std::array<int, 3> a{Index, J, K};
+            transversal_vector.reserve(size(0)*size(1)*size(2));
+            struct index2D { int J; int K; };
+            auto predicate([s_ = std::max({size(0), size(1), size(2)})](int IndexN, std::vector<index2D>& indexJK) ->bool {
+                int j{};
                 do {
-                    j = Index - 1;
-                    while ((j != -1) && (a[j] >= a[j + 1])) j--;
-                    if (j == -1) return false;
-                    int k = Index - 1;
-                    while (a[j] >= a[k]) k--;
-                    _my::swap(a, j, k);
-                    int l = j + 1, r = Index - 1;
+                    j = IndexN;
+                    while ((j >= 0) && (indexJK[j].J >= indexJK[j + 1].J)  && (indexJK[j].K >= indexJK[j + 1].K)) j--;
+                    if (j < 0) return false;
+                    int k = IndexN - 1;
+                    while ((j >= 0) && (k >= 0) && (indexJK[j].J >= indexJK[k].J) && (indexJK[j].K >= indexJK[k].K)) k--;
+                    _my::swap(indexJK, j, k + 1);
+                    int l = j + 1, r = IndexN - 1;
                     while (l < r)
-                    _my::swap(a, l++, r--);
-                } while (j > M - 1);
+                    _my::swap(indexJK, l++, r--);
+                } while (j > (int)s_ - 1);
                 return true;
             });
             if (index == 'i') {
+                std::vector<index2D> tmp;
+                tmp.reserve(size(0)*size(1)*size(2));
                 for (size_t j = 0; j != size(1); ++j) {
                     for (size_t k = 0; k != size(2); ++k) {
-                        if(predicate(int(N), int(j), int(k))){
+                        tmp.push_back({int(j), int(k)});
+                        if(predicate(int(N), tmp)){
                             transversal_vector.push_back(transversal_matrix('i', N)(j, k));
                         }
                     }
                 }
             } else if (index == 'j') {
+                std::vector<index2D> tmp;
+                tmp.reserve(size(0)*size(0)*size(2));
                 for (size_t i = 0; i != size(0); ++i) {
                     for (size_t k = 0; k != size(2); ++k) {
-                        if(predicate(int(N), int(i), int(k))){
+                        tmp.push_back({int(i), int(k)});
+                        if(predicate(int(N), tmp)){
                             transversal_vector.push_back(transversal_matrix('j', N)(i, k));
                         }
                     }
                 }
             } else if (index == 'k') {
+                std::vector<index2D> tmp;
+                tmp.reserve(size(0)*size(0)*size(1));
                 for (size_t i = 0; i != size(0); ++i) {
                     for (size_t j = 0; j != size(1); ++j) {
-                        if(predicate(int(N), int(i), int(j))){
+                        tmp.push_back({int(i), int(j)});
+                        if(predicate(int(N), tmp)){
                             transversal_vector.push_back(transversal_matrix('k', N)(i, j));
                         }
                     }
@@ -301,7 +312,7 @@ namespace _spatial {
             }
         }
         T DET_FULL() {
-            return tbb::parallel_reduce(range_tbb({ 1, size(0) }, { 1, size(1) }, { 1, size(2) }), T(0),
+            return tbb::parallel_reduce(range_tbb({ 0, size(0) }, { 0, size(1) }, { 0, size(2) }), T(0),
                     [=](const range_tbb& out, T tmp) {
                     const auto& out_i = out.dim(0);
                     const auto& out_j = out.dim(1);

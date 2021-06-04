@@ -239,56 +239,74 @@ struct Matrix4D : Matrix4D_expr<typename proto::terminal< matrix4_<T>>::type> {
         BOOST_ASSERT_MSG((index == 'i') || (index == 'j') || (index == 'k') || (index == 'l'), "Не совпадение индексов");
         typename array_type::index_gen indices;
         std::vector<T> transversal_vector;
-        auto predicate([](int Index, int J, int K, int L) -> bool {
-            int j; int M = 4; std::array<int, 4> a{Index, J, K, L};
+        transversal_vector.reserve(size(0)*size(1)*size(2)*size(3));
+        struct index3D { int J; int K; int L; };
+        auto predicate([s_ = std::max({size(0), size(1), size(2), size(3)})](int IndexN, std::vector<index3D>& indexJKL) -> bool {
+            int j{};
             do {
-                j = Index - 1;
-                while ((j != -1) && (a[j] >= a[j + 1])) j--;
-                if (j == -1) return false;
-                int k = Index - 1;
-                while (a[j] >= a[k]) k--;
-                _my::swap(a, j, k);
-                int l = j + 1, r = Index - 1;
+                j = IndexN;
+                while ((j >= 0) && (indexJKL[j].J >= indexJKL[j + 1].J)
+                       && (indexJKL[j].K >= indexJKL[j + 1].K)
+                        && (indexJKL[j].L >= indexJKL[j + 1].L)) j--;
+                if (j < 0) return false;
+                int k = IndexN - 1;
+                while ((j >= 0) && (k >= 0) && (indexJKL[j].J >= indexJKL[k].J) && (indexJKL[j].K >= indexJKL[k].K)
+                       && (indexJKL[j].L >= indexJKL[k].L)) k--;
+                _my::swap(indexJKL, j, k + 1);
+                int l = j + 1, r = IndexN - 1;
                 while (l < r)
-                _my::swap(a, l++, r--);
-            } while (j > M - 1);
+                _my::swap(indexJKL, l++, r--);
+            } while (j > (int)s_ - 1);
             return true;
         });
+
         if (index == 'i') {
+            std::vector<index3D> tmp;
+            tmp.reserve(size(0)*size(0)*size(2)*size(3));
             for (size_t j = 0; j != size(1); ++j) {
                 for (size_t k = 0; k != size(2); ++k) {
                     for (size_t l = 0; l != size(3); ++l) {
-                        if(predicate(int(N), int(j), int(k), int(l))){
+                        tmp.push_back({int(j), int(k), int(l)});
+                        if(predicate(int(N), tmp)){
                             transversal_vector.push_back(transversal_matrix('i', N)(j, k, l));
                         }
                     }
                 }
             }
         } else if (index == 'j') {
+            std::vector<index3D> tmp;
+            tmp.reserve(size(0)*size(0)*size(2)*size(3));
             for (size_t i = 0; i != size(0); ++i) {
                 for (size_t k = 0; k != size(2); ++k) {
                     for (size_t l = 0; l != size(3); ++l) {
-                        if(predicate(int(N), int(i), int(k), int(l))){
+                        tmp.push_back({int(i), int(k), int(l)});
+                        if(predicate(int(N), tmp)){
                             transversal_vector.push_back(transversal_matrix('j', N)(i, k, l));
                         }
                     }
                 }
             }
         } else if (index == 'k') {
+            std::vector<index3D> tmp;
+            tmp.reserve(size(0)*size(0)*size(2)*size(3));
             for (size_t i = 0; i != size(0); ++i) {
                 for (size_t j = 0; j != size(1); ++j) {
                     for (size_t l = 0; l != size(3); ++l) {
-                        if(predicate(int(N), int(i), int(j), int(l))){
+                        tmp.push_back({int(i), int(j), int(l)});
+                        if(predicate(int(N), tmp)){
                             transversal_vector.push_back(transversal_matrix('k', N)(i, j, l));
                         }
                     }
                 }
             }
         } else if (index == 'l') {
+            std::vector<index3D> tmp;
+            tmp.reserve(size(0)*size(0)*size(2)*size(3));
             for (size_t i = 0; i != size(0); ++i) {
                 for (size_t j = 0; j != size(1); ++j) {
                     for (size_t k = 0; k != size(2); ++k) {
-                        if(predicate(int(N), int(i), int(j), int(k))){
+                        tmp.push_back({int(i), int(j), int(k)});
+                        if(predicate(int(N), tmp)){
                             transversal_vector.push_back(transversal_matrix('k', N)(i, j, k));
                         }
                     }
@@ -327,7 +345,7 @@ struct Matrix4D : Matrix4D_expr<typename proto::terminal< matrix4_<T>>::type> {
         }
     }
     T DET_FULL() {
-        return tbb::parallel_reduce(range_tbb({ 1, size(0) }, { 1, size(1) }, { 1, size(2) }, { 1, size(2) }), T(0),
+        return tbb::parallel_reduce(range_tbb({ 0, size(0) }, { 0, size(1) }, { 0, size(2) }, { 0, size(3) }), T(0),
                 [=](const range_tbb& out, T tmp) {
                 const auto& out_i = out.dim(0);
                 const auto& out_j = out.dim(1);
