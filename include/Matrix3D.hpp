@@ -237,51 +237,48 @@ namespace _spatial {
             typename array_type::index_gen indices;
             std::vector<T> transversal_vector;
             transversal_vector.reserve(size(0)*size(1)*size(2));
-            struct index2D { int J; int K; };
-            auto predicate([s_ = std::max({size(0), size(1), size(2)})](int IndexN, std::vector<index2D>& indexJK) ->bool {
-                int j{};
-                do {
-                    j = IndexN;
-                    while ((j >= 0) && (indexJK[j].J >= indexJK[j + 1].J)  && (indexJK[j].K >= indexJK[j + 1].K)) j--;
-                    if (j < 0) return false;
-                    int k = IndexN - 1;
-                    while ((j >= 0) && (k >= 0) && (indexJK[j].J >= indexJK[k].J) && (indexJK[j].K >= indexJK[k].K)) k--;
-                    _my::swap(indexJK, j, k + 1);
-                    int l = j + 1, r = IndexN - 1;
-                    while (l < r)
-                    _my::swap(indexJK, l++, r--);
-                } while (j > (int)s_ - 1);
-                return true;
+            struct index3D { int I; int J; int K; };
+            auto predicate([s_ = std::max({size(0), size(1), size(2)})]
+                           (std::vector<index3D>& index) {
+                for(int i = 0; i < s_; ++i) {
+                    if((index.at(i).I != index.at(i + 1).I) &&
+                            (index.at(i).J == index.at(i + 1).K ||
+                            index.at(i).K == index.at(i + 1).J)) return true;
+                    else return false;
+                }
             });
             if (index == 'i') {
-                std::vector<index2D> tmp;
-                tmp.reserve(size(0)*size(1)*size(2));
+                std::vector<index3D> index_vector;
+                index_vector.reserve(size(0)*size(1)*size(2));
                 for (size_t j = 0; j != size(1); ++j) {
                     for (size_t k = 0; k != size(2); ++k) {
-                        tmp.push_back({int(j), int(k)});
-                        if(predicate(int(N), tmp)){
+                        index_vector.push_back({(int)N, int(j), int(k)});
+                        index_vector.push_back({(int)(N + 1), int(j), int(k)});
+                        if(predicate(index_vector)){
                             transversal_vector.push_back(transversal_matrix('i', N)(j, k));
                         }
                     }
                 }
             } else if (index == 'j') {
-                std::vector<index2D> tmp;
-                tmp.reserve(size(0)*size(0)*size(2));
+                std::vector<index3D> index_vector;
+                index_vector.reserve(size(0)*size(1)*size(2));
                 for (size_t i = 0; i != size(0); ++i) {
                     for (size_t k = 0; k != size(2); ++k) {
-                        tmp.push_back({int(i), int(k)});
-                        if(predicate(int(N), tmp)){
+                        index_vector.push_back({(int)N, int(i), int(k)});
+                        index_vector.push_back({(int)(N + 1), int(i), int(k)});
+                        if(predicate(index_vector)){
                             transversal_vector.push_back(transversal_matrix('j', N)(i, k));
                         }
                     }
                 }
             } else if (index == 'k') {
-                std::vector<index2D> tmp;
-                tmp.reserve(size(0)*size(0)*size(1));
+                std::vector<index3D> index_vector;
+                index_vector.reserve(size(0)*size(1)*size(2));
                 for (size_t i = 0; i != size(0); ++i) {
                     for (size_t j = 0; j != size(1); ++j) {
-                        tmp.push_back({int(i), int(j)});
-                        if(predicate(int(N), tmp)){
+                        index_vector.push_back({(int)N, int(i), int(j)});
+                        index_vector.push_back({(int)(N + 1), int(i), int(j)});
+                        if(predicate(index_vector)){
                             transversal_vector.push_back(transversal_matrix('k', N)(i, j));
                         }
                     }
@@ -293,19 +290,19 @@ namespace _spatial {
             BOOST_ASSERT_MSG((index == 'i') || (index == 'j') || (index == 'k') , "Не совпадение индексов");
             if(index == 'i') {
                 return tbb::parallel_reduce(tbb::blocked_range<size_t>(0, size(0)), T(1),
-                        [=](const tbb::blocked_range<size_t>& r, T tmp) {
+                        [this, &N](const tbb::blocked_range<size_t>& r, T tmp) {
                             for (size_t i = r.begin(); i != r.end(); ++i) {
                                 tmp *= transversal_vector('i', N)[i];
                             } return tmp; }, std::multiplies<T>());
             } else if(index == 'j') {
                 return tbb::parallel_reduce(tbb::blocked_range<size_t>(0, size(1)), T(1),
-                        [=](const tbb::blocked_range<size_t>& r, T tmp) {
+                        [this, &N](const tbb::blocked_range<size_t>& r, T tmp) {
                             for (size_t i = r.begin(); i != r.end(); ++i) {
                                 tmp *= transversal_vector('j', N)[i];
                             } return tmp; }, std::multiplies<T>());
             } else if(index == 'k') {
                 return tbb::parallel_reduce(tbb::blocked_range<size_t>(0, size(2)), T(1),
-                        [=](const tbb::blocked_range<size_t>& r, T tmp) {
+                        [this, &N](const tbb::blocked_range<size_t>& r, T tmp) {
                             for (size_t i = r.begin(); i != r.end(); ++i) {
                                 tmp *= transversal_vector('k', N)[i];
                             } return tmp; }, std::multiplies<T>());
@@ -313,7 +310,7 @@ namespace _spatial {
         }
         T DET_FULL() {
             return tbb::parallel_reduce(range_tbb({ 0, size(0) }, { 0, size(1) }, { 0, size(2) }), T(0),
-                    [=](const range_tbb& out, T tmp) {
+                    [this](const range_tbb& out, T tmp) {
                     const auto& out_i = out.dim(0);
                     const auto& out_j = out.dim(1);
                     const auto& out_k = out.dim(2);

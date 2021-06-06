@@ -10,10 +10,10 @@
 
 #include <include/Matrix_type.hpp>
 
-static constexpr int NI = 9;
-static constexpr int NJ = 9;
-static constexpr int NK = 9;
-static constexpr int NL = 9;
+static constexpr int NI = 5;
+static constexpr int NJ = 5;
+static constexpr int NK = 5;
+static constexpr int NL = 5;
 
 static constexpr std::array<size_t, 2> shape2D = { {NI, NJ} };
 static constexpr std::array<size_t, 3> shape3D = { {NI, NJ, NK} };
@@ -57,7 +57,7 @@ int main()
                 std::cout << "Determinant of matrix 3D orientation k = " << k << "; " << A3.DET_orient('k', k) << std::endl;
             }
             std::cout << "======================================" << std::endl;
-            std::cout << "The complete determinant of the matrix 4D = " << A3.DET_FULL() << std::endl;
+            std::cout << "The complete determinant of the matrix 3D = " << A3.DET_FULL() << std::endl;
             std::cout << "END TEST MATRIX_3D, ITERATION = " << ", " << tmr.format() << std::endl;
 
         }

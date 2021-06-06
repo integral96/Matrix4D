@@ -221,7 +221,7 @@ namespace _spatial {
             BOOST_ASSERT_MSG((size(0) == size(1)), "2D Матрица должна быть квадратная");
 
             return tbb::parallel_reduce(tbb::blocked_range<size_t>(0, size(0)), T(1),
-                [=](const tbb::blocked_range<size_t>& r, T tmp) {
+                [this](const tbb::blocked_range<size_t>& r, T tmp) {
                     for (size_t i = r.begin(); i != r.end(); ++i) {
                         size_t k = i;
                         for (size_t j = i + 1; j < size(0); ++j)
@@ -233,7 +233,7 @@ namespace _spatial {
                             tmp = T(0);
                         }
                         if (k != i) {
-                            for (int j = i; j < size(0); j++) std::swap(proto::value(*this)(i, j), proto::value(*this)(k, j));
+                            for (int j = i; j < (int)size(0); j++) std::swap(proto::value(*this)(i, j), proto::value(*this)(k, j));
                             tmp = -tmp;
                         }
                         tmp *= proto::value(*this)(i, i);
