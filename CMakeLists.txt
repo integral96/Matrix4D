@@ -33,4 +33,4 @@ set (CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -ltbb -pedantic -pthread -W
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 
-target_link_libraries (${PROJECT_NAME} ${TBB_IMPORTED_TARGETS} ${Boost_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARY})
+target_link_libraries (${PROJECT_NAME} ${Boost_LIBRARIES} ${OPENGL_LIBRARIES} ${GLUT_LIBRARY} TBB::tbb )

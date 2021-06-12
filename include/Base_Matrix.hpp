@@ -10,8 +10,7 @@
 #include <boost/random.hpp>
 #include <boost/noncopyable.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
-#include <boost/core/demangle.hpp>
-#include <boost/core/typeinfo.hpp>
+
 
 #include <tbb/parallel_for.h>
 #include <tbb/blocked_rangeNd.h>
@@ -154,48 +153,3 @@ struct IsBigInt : mpl::false_ {};
 template<>
 struct IsBigInt<big::int128_t> : mpl::true_ {};
 
-///ABS
-namespace _my {
-template<typename T>
-inline T abs(const T& x) {
-    return (x < 0) ? -x : x;
-}
-template<typename T, template<typename Elem, typename = std::allocator<Elem>> class Array = std::vector>
-void swap(Array<T>& a, int i, int j) {
-    T s = a[i];
-    a[i] = a[j];
-    a[j] = s;
-}
-
-struct print_type
-{
-    template <class T>
-    void operator() (T) const
-    {
-        auto const& ti = BOOST_CORE_TYPEID(T);
-        std::cout << boost::core::demangled_name(ti) << std::endl;
-    }
-};
-template<size_t DimN>
-size_t invers(int I, int J, int K) {
-    std::array<int, DimN> a{I, J, K};
-    size_t count{};
-    for(size_t i = 2; i < DimN; ++i) {
-        if(((a[i] > a[i+1]) && (a[i]>a[i-1])) || ((a[i] < a[i+1]) && (a[i] < a[i-1]))) {
-            count++;
-        }
-    }
-    return count;
-}
-template<size_t DimN>
-size_t invers(int I, int J, int K, int L) {
-    std::array<int, DimN> a{I, J, K, L};
-    size_t count{};
-    for(size_t i = 2; i < DimN; ++i) {
-        if(((a[i] > a[i+1]) && (a[i]>a[i-1])) || ((a[i] < a[i+1]) && (a[i] < a[i-1]))) {
-            count++;
-        }
-    }
-    return count;
-}
-}

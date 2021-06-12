@@ -93,6 +93,61 @@ namespace _spatial {
         using range = boost::multi_array_types::index_range;
         using sub_matrix_view2D = typename matrix3_<T>::sub_matrix_view2D;
         using sub_matrix_view3D = typename matrix3_<T>::sub_matrix_view3D;
+        ///Product struct on 2D matrix
+        struct product2D_closure {
+        private:
+            const Matrix3D<T>& A;
+            const Matrix2D<T>& a;
+            char index_name;
+        public:
+            product2D_closure(const Matrix3D<T>& A_, const Matrix2D<T>& a_, char index_name_) :
+             A(A_), a(a_), index_name(index_name_) {}
+            T value(size_t K, size_t i, size_t j, size_t k) const {
+                if(index_name == 'i') {
+                    return proto::value(A)(K, j, k)*proto::value(a)(K, i);
+                }
+                if(index_name == 'j') {
+                    return proto::value(A)(i, K, k)*proto::value(a)(K, j);
+                }
+                if(index_name == 'k') {
+                    return proto::value(A)(i, j, K)*proto::value(a)(K, k);
+                }
+            }
+        };
+        struct product2D_ {
+        private:
+            Matrix3D<T>& this_;
+            const Matrix3D<T>& A;
+            const Matrix2D<T>& a;
+            char index_name;
+            T result;
+            T summ_(product2D_closure& closure, size_t i, size_t j, size_t k) {
+                if(index_name == 'i') {
+                    for(size_t K = 0; K < proto::value(this_).shape()[0]; ++K)
+                        result += closure.value(K, i, j, k);
+                    return result;
+                }
+                if(index_name == 'j') {
+                    for(size_t K = 0; K < proto::value(this_).shape()[1]; ++K)
+                        result += closure.value(K, i, j, k);
+                    return result;
+                }
+                if(index_name == 'k') {
+                    for(size_t K = 0; K < proto::value(this_).shape()[2]; ++K)
+                        result += closure.value(K, i, j, k);
+                    return result;
+                }
+            }
+        public:
+            product2D_(Matrix3D<T>& this_, const Matrix3D<T>& A_, const Matrix2D<T>& a_, char index_name_) :
+            this_(this_), A(A_), a(a_), index_name(index_name_) {}
+            void operator()(size_t i, size_t j, size_t k) {
+                product2D_closure closure(A, a, index_name);
+                proto::value(this_)(i, j, k) = summ_(closure, i, j, k);
+            }
+        };
+
+        ///Finish struct product
 
         const std::array<size_t, 3>& shape_;
 
@@ -197,6 +252,35 @@ namespace _spatial {
                 });
             return matrix;
         }
+
+        Matrix3D<T> prod (Matrix2D<T> const& A, char index_name) const {
+            if(index_name == 'i'){
+                SizeMatrix2D_context const sizes(size(0), size(0));
+                proto::eval(proto::as_expr<Matrix2D_domain>(A), sizes);
+            }
+            if(index_name == 'j'){
+                SizeMatrix2D_context const sizes(size(1), size(1));
+                proto::eval(proto::as_expr<Matrix2D_domain>(A), sizes);
+            }
+            if(index_name == 'k'){
+                SizeMatrix2D_context const sizes(size(2), size(2));
+                proto::eval(proto::as_expr<Matrix2D_domain>(A), sizes);
+            }
+            Matrix3D<T> matrix(shape_);
+            tbb::parallel_for(range_tbb({ 0, size(0) }, { 0, size(1) }, { 0, size(2) }),
+                [&](const range_tbb& out) {
+                    const auto& out_i = out.dim(0);
+                    const auto& out_j = out.dim(1);
+                    const auto& out_k = out.dim(2);
+                    for (size_t i = out_i.begin(); i < out_i.end(); ++i)
+                        for (size_t j = out_j.begin(); j < out_j.end(); ++j)
+                            for (size_t k = out_k.begin(); k < out_k.end(); ++k) {
+                                product2D_(matrix, *this, A, index_name)(i, j, k);
+                            }
+                });
+            return matrix;
+        }
+
         Matrix3D<T> operator / (const T val) const {
             Matrix3D<T> matrix(shape_);
             tbb::parallel_for(range_tbb({ 0, size(0) }, { 0, size(1) }, { 0, size(2) }),
@@ -286,6 +370,7 @@ namespace _spatial {
             }
             return transversal_vector;
         }
+
         T DET_orient(char index, int N) {
             BOOST_ASSERT_MSG((index == 'i') || (index == 'j') || (index == 'k') , "Не совпадение индексов");
             if(index == 'i') {
@@ -319,6 +404,25 @@ namespace _spatial {
                             for (size_t k = out_k.begin(); k < out_k.end(); ++k)
                                 tmp += std::pow(-1, _my::invers<3>(i, j, k))*DET_orient('i', i)*DET_orient('j', j)*DET_orient('k', k);
                     return tmp; }, std::plus<T>() );
+        }
+        ///trilinear form
+        T trilinear_form(const Matrix1D<T>& X, const Matrix1D<T>& Y, const Matrix1D<T>& Z) {
+            SizeMatrix1D_context const sizes_X(size(0));
+            SizeMatrix1D_context const sizes_Y(size(1));
+            SizeMatrix1D_context const sizes_Z(size(2));
+            proto::eval(proto::as_expr<Matrix1D_domain>(X), sizes_X);
+            proto::eval(proto::as_expr<Matrix1D_domain>(Y), sizes_Y);
+            proto::eval(proto::as_expr<Matrix1D_domain>(Z), sizes_Z);
+        return tbb::parallel_reduce(range_tbb({ 0, size(0) }, { 0, size(1) }, { 0, size(2) }), T(0),
+                [this, &X, &Y, &Z](const range_tbb& out, T tmp) {
+                const auto& out_i = out.dim(0);
+                const auto& out_j = out.dim(1);
+                const auto& out_k = out.dim(2);
+                for (size_t i = out_i.begin(); i < out_i.end(); ++i)
+                    for (size_t j = out_j.begin(); j < out_j.end(); ++j)
+                        for (size_t k = out_k.begin(); k < out_k.end(); ++k)
+                            tmp += proto::value(*this)(i, j, k)*X(i)*Y(j)*Z(k);
+                return tmp; }, std::plus<T>() );
         }
 
         friend std::ostream& operator << (std::ostream& os, const Matrix3D<T>& A) {

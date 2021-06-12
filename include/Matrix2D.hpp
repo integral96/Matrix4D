@@ -1,5 +1,6 @@
 #pragma once
 #include <include/Matrix1D.hpp>
+#include <include/base_func.hpp>
 
 #include <tbb/parallel_reduce.h>
 

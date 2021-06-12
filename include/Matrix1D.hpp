@@ -2,6 +2,7 @@
 
 #include <include/Base_Matrix.hpp>
 
+
 namespace _spatial {
 
     template<typename Expr>
@@ -98,12 +99,12 @@ namespace _spatial {
             boost::random::mt19937 gen{static_cast<std::uint32_t>(now)};
                 if constexpr(std::is_integral_v<T> || IsBigInt<T>::value) {
                     boost::random::uniform_int_distribution<> dist{int(min), int(max)};
-                    for(size_t i = 0; i < size(0); ++i)
+                    for(size_t i = 0; i < size(); ++i)
                         proto::value(*this)(i) = dist(gen);
                 }
                 if constexpr(!std::is_integral_v<T>) {
                     boost::random::uniform_real_distribution<> dist{double(min), double(max)};
-                    for(size_t i = 0; i < size(0); ++i)
+                    for(size_t i = 0; i < size(); ++i)
                         proto::value(*this)(i) = dist(gen);
                 }
         }
