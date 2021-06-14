@@ -121,7 +121,7 @@ namespace _spatial {
             const Matrix2D<T>& a;
             char index_name;
             T result;
-            T summ_(product2D_closure& closure, size_t i, size_t j, size_t k) {
+            const T summ_(product2D_closure& closure, size_t i, size_t j, size_t k) {
                 if(index_name == 'i') {
                     for(size_t K = 0; K < proto::value(this_).shape()[0]; ++K)
                         result += closure.value(K, i, j, k);
@@ -158,6 +158,15 @@ namespace _spatial {
         size_t size(size_t i) const {
             BOOST_ASSERT_MSG((i < 3), "Error i >= 4");
             return proto::value(*this).shape()[i];
+        }
+        void init(const std::vector<std::vector<std::vector<T>>>& list) {
+            BOOST_ASSERT_MSG(list.size() == size(0), "size orient i not equal");
+            BOOST_ASSERT_MSG(list.begin()->size() == size(1), "size orient j not equal");
+            BOOST_ASSERT_MSG(list.begin()->begin()->size() == size(2), "size orient k not equal");
+            for(size_t i = 0; i < size(0); ++i)
+                for(size_t j = 0; j < size(1); ++j)
+                    for(size_t k = 0; k < size(2); ++k)
+                        proto::value(*this)(i, j, k) = list.at(i).at(j).at(k);
         }
         void Random(T min, T max, long shift = 0) {
             std::time_t now = std::time(&shift);
@@ -253,7 +262,7 @@ namespace _spatial {
             return matrix;
         }
 
-        Matrix3D<T> prod (Matrix2D<T> const& A, char index_name) const {
+        Matrix3D<T>& prod (Matrix3D<T> const& A, Matrix2D<T> const& B, char index_name) {
             if(index_name == 'i'){
                 SizeMatrix2D_context const sizes(size(0), size(0));
                 proto::eval(proto::as_expr<Matrix2D_domain>(A), sizes);
@@ -266,7 +275,8 @@ namespace _spatial {
                 SizeMatrix2D_context const sizes(size(2), size(2));
                 proto::eval(proto::as_expr<Matrix2D_domain>(A), sizes);
             }
-            Matrix3D<T> matrix(shape_);
+            SizeMatrix3D_context const sizes(size(0), size(1), size(2));
+            proto::eval(proto::as_expr<Matrix3D_domain>(A), sizes);
             tbb::parallel_for(range_tbb({ 0, size(0) }, { 0, size(1) }, { 0, size(2) }),
                 [&](const range_tbb& out) {
                     const auto& out_i = out.dim(0);
@@ -275,10 +285,10 @@ namespace _spatial {
                     for (size_t i = out_i.begin(); i < out_i.end(); ++i)
                         for (size_t j = out_j.begin(); j < out_j.end(); ++j)
                             for (size_t k = out_k.begin(); k < out_k.end(); ++k) {
-                                product2D_(matrix, *this, A, index_name)(i, j, k);
+                                product2D_(*this, A, B, index_name)(i, j, k);
                             }
                 });
-            return matrix;
+            return *this;
         }
 
         Matrix3D<T> operator / (const T val) const {

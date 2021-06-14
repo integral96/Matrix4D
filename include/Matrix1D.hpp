@@ -89,10 +89,14 @@ namespace _spatial {
 
         constexpr Matrix1D(const std::array<size_t, 1>& shape) :
             Matrix1D_expr<expr_type>(expr_type::make(matrix1_<T>(shape))), shape_(shape) {
-
         }
         virtual size_t size() const {
             return proto::value(*this).shape()[0];
+        }
+        void init(const std::vector<T>& list) {
+            BOOST_ASSERT_MSG(list.size() == size(0), "size orient i not equal");
+            for(size_t i = 0; i < size(0); ++i)
+                proto::value(*this)(i) = list.at(i);
         }
         virtual void Random(T min, T max) {
             std::time_t now = std::time(0);

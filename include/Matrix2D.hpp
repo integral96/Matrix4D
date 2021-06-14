@@ -104,6 +104,13 @@ namespace _spatial {
             BOOST_ASSERT_MSG((i < 2), "Error i >= 2");
             return proto::value(*this).shape()[i];
         }
+        void init(const std::vector<std::vector<T>>& list) {
+            BOOST_ASSERT_MSG(list.size() == size(0), "size orient i not equal");
+            BOOST_ASSERT_MSG(list.begin()->size() == size(1), "size orient j not equal");
+            for(size_t i = 0; i < size(0); ++i)
+                for(size_t j = 0; j < size(1); ++j)
+                        proto::value(*this)(i, j) = list.at(i).at(j);
+        }
         void Random(T min, T max) {
             std::time_t now = std::time(0);
             boost::random::mt19937 gen{static_cast<std::uint32_t>(now)};

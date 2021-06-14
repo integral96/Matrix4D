@@ -96,56 +96,96 @@ struct Matrix4D : Matrix4D_expr<typename proto::terminal< matrix4_<T>>::type> {
     using range = boost::multi_array_types::index_range;
     using sub_matrix_view1D = typename matrix4_<T>::sub_matrix_view1D;
 
-    ///Product struct on 3D matrix
-    struct product3D_closure {
+    ///Product struct matrix
+    template<class MatrND, class MatrN_1D>
+    struct product_closure {
     private:
-        const Matrix3D<T>& A;
-        const Matrix3D<T>& a;
+        const MatrND& A;
+        const MatrN_1D& a;
         char index_name;
     public:
-        product3D_closure(const Matrix3D<T>& A_, const Matrix3D<T>& a_, char index_name_) :
+        product_closure(const MatrND& A_, const MatrN_1D& a_, char index_name_) :
          A(A_), a(a_), index_name(index_name_) {}
         T value(size_t K, size_t i, size_t j, size_t k, size_t l) const {
-            if(index_name == 'i') {
-                return proto::value(A)(K, j, k)*proto::value(a)(K, i, l);
-            }
-            if(index_name == 'j') {
-                return proto::value(A)(i, K, k)*proto::value(a)(K, j, l);
-            }
-            if(index_name == 'k') {
-                return proto::value(A)(i, j, K)*proto::value(a)(K, k, l);
+            if constexpr(IsMatrix3D<T, MatrND>::value) {
+                if(index_name == 'i') {
+                    return proto::value(A)(K, j, k)*proto::value(a)(K, i, l);
+                }
+                if(index_name == 'j') {
+                    return proto::value(A)(i, K, k)*proto::value(a)(K, j, l);
+                }
+                if(index_name == 'k') {
+                    return proto::value(A)(i, j, K)*proto::value(a)(K, k, l);
+                }
+            } else if constexpr(IsMatrix4D<T, MatrND>::value) {
+                if(index_name == 'i') {
+                    return proto::value(A)(K, j, k, l)*proto::value(a)(K, i, l);
+                }
+                if(index_name == 'j') {
+                    return proto::value(A)(i, K, k, l)*proto::value(a)(K, j, l);
+                }
+                if(index_name == 'k') {
+                    return proto::value(A)(i, j, K, l)*proto::value(a)(K, k, l);
+                }
+                if(index_name == 'l') {
+                    return proto::value(A)(i, j, k, K)*proto::value(a)(K, l, l);
+                }
             }
         }
     };
-    struct product3D_ {
+    template<class MatrND, class MatrN_1D>
+    struct product_ {
     private:
         Matrix4D<T>& this_;
-        const Matrix3D<T>& A;
-        const Matrix3D<T>& a;
+        const MatrND& A;
+        const MatrN_1D& a;
         char index_name;
         T result;
-        T summ_(product3D_closure& closure, size_t i, size_t j, size_t k, size_t l) {
-            if(index_name == 'i') {
-                for(size_t K = 0; K < proto::value(this_).shape()[0]; ++K)
-                    result += closure.value(K, i, j, k, l);
-                return result;
-            }
-            if(index_name == 'j') {
-                for(size_t K = 0; K < proto::value(this_).shape()[1]; ++K)
-                    result += closure.value(K, i, j, k, l);
-                return result;
-            }
-            if(index_name == 'k') {
-                for(size_t K = 0; K < proto::value(this_).shape()[2]; ++K)
-                    result += closure.value(K, i, j, k, l);
-                return result;
+        const T summ_(product_closure<MatrND, MatrN_1D>& closure, size_t i, size_t j, size_t k, size_t l) {
+            if constexpr(IsMatrix3D<T, MatrND>::value) {
+                if(index_name == 'i') {
+                    for(size_t K = 0; K < proto::value(this_).shape()[0]; ++K)
+                        result += closure.value(K, i, j, k, l);
+                    return result;
+                }
+                if(index_name == 'j') {
+                    for(size_t K = 0; K < proto::value(this_).shape()[1]; ++K)
+                        result += closure.value(K, i, j, k, l);
+                    return result;
+                }
+                if(index_name == 'k') {
+                    for(size_t K = 0; K < proto::value(this_).shape()[2]; ++K)
+                        result += closure.value(K, i, j, k, l);
+                    return result;
+                }
+            } else if constexpr(IsMatrix4D<T, MatrND>::value) {
+                if(index_name == 'i') {
+                    for(size_t K = 0; K < proto::value(this_).shape()[0]; ++K)
+                        result += closure.value(K, i, j, k, l);
+                    return result;
+                }
+                if(index_name == 'j') {
+                    for(size_t K = 0; K < proto::value(this_).shape()[1]; ++K)
+                        result += closure.value(K, i, j, k, l);
+                    return result;
+                }
+                if(index_name == 'k') {
+                    for(size_t K = 0; K < proto::value(this_).shape()[2]; ++K)
+                        result += closure.value(K, i, j, k, l);
+                    return result;
+                }
+                if(index_name == 'l') {
+                    for(size_t K = 0; K < proto::value(this_).shape()[3]; ++K)
+                        result += closure.value(K, i, j, k, l);
+                    return result;
+                }
             }
         }
     public:
-        product3D_(Matrix4D<T>& this_, const Matrix3D<T>& A_, const Matrix3D<T>& a_, char index_name_) :
+        product_(Matrix4D<T>& this_, const MatrND& A_, const MatrN_1D& a_, char index_name_) :
         this_(this_), A(A_), a(a_), index_name(index_name_) {}
         void operator()(size_t i, size_t j, size_t k, size_t l) {
-            product3D_closure closure(A, a, index_name);
+            product_closure<MatrND, MatrN_1D> closure(A, a, index_name);
             proto::value(this_)(i, j, k, l) = summ_(closure, i, j, k, l);
         }
     };
@@ -161,6 +201,17 @@ struct Matrix4D : Matrix4D_expr<typename proto::terminal< matrix4_<T>>::type> {
     size_t size(size_t i) const {
         BOOST_ASSERT_MSG((i < 4), "Error i >= 4");
         return proto::value(*this).shape()[i];
+    }
+    void init(const std::vector<std::vector<std::vector<std::vector<T>>>>& list) {
+        BOOST_ASSERT_MSG(list.size() == size(0), "size orient i not equal");
+        BOOST_ASSERT_MSG(list.begin()->size() == size(1), "size orient j not equal");
+        BOOST_ASSERT_MSG(list.begin()->begin()->size() == size(2), "size orient k not equal");
+        BOOST_ASSERT_MSG(list.begin()->begin()->begin()->size() == size(2), "size orient k not equal");
+        for(size_t i = 0; i < size(0); ++i)
+            for(size_t j = 0; j < size(1); ++j)
+                for(size_t k = 0; k < size(2); ++k)
+                    for(size_t l = 0; l < size(3); ++l)
+                        proto::value(*this)(i, j, k, l) = list.at(i).at(j).at(k).at(l);
     }
     void Random(T min, T max, long shift = 0) {
         std::time_t now = std::time(&shift);
@@ -266,19 +317,22 @@ struct Matrix4D : Matrix4D_expr<typename proto::terminal< matrix4_<T>>::type> {
         });
         return matrix;
     }
-    ///Product
+    ///Product 3D
     Matrix4D<T>& prod (Matrix3D<T> const& A, Matrix3D<T> const& B, char index_name) {
         if(index_name == 'i'){
-            SizeMatrix2D_context const sizes(size(0), size(0));
-            proto::eval(proto::as_expr<Matrix2D_domain>(A), sizes);
+            SizeMatrix3D_context const sizes(size(0), size(0), size(0));
+            proto::eval(proto::as_expr<Matrix3D_domain>(A), sizes);
+            proto::eval(proto::as_expr<Matrix3D_domain>(B), sizes);
         }
         if(index_name == 'j'){
-            SizeMatrix2D_context const sizes(size(1), size(1));
-            proto::eval(proto::as_expr<Matrix2D_domain>(A), sizes);
+            SizeMatrix3D_context const sizes(size(1), size(1), size(1));
+            proto::eval(proto::as_expr<Matrix3D_domain>(A), sizes);
+            proto::eval(proto::as_expr<Matrix3D_domain>(B), sizes);
         }
         if(index_name == 'k'){
-            SizeMatrix2D_context const sizes(size(2), size(2));
-            proto::eval(proto::as_expr<Matrix2D_domain>(A), sizes);
+            SizeMatrix3D_context const sizes(size(2), size(2), size(2));
+            proto::eval(proto::as_expr<Matrix3D_domain>(A), sizes);
+            proto::eval(proto::as_expr<Matrix3D_domain>(B), sizes);
         }
         tbb::parallel_for(range_tbb({ 0, size(0) }, { 0, size(1) }, { 0, size(2) }, { 0, size(3) }),
             [&](const range_tbb& out) {
@@ -290,7 +344,39 @@ struct Matrix4D : Matrix4D_expr<typename proto::terminal< matrix4_<T>>::type> {
                     for (size_t j = out_j.begin(); j < out_j.end(); ++j)
                         for (size_t k = out_k.begin(); k < out_k.end(); ++k) {
                             for (size_t l = out_l.begin(); l < out_l.end(); ++l) {
-                                product3D_(*this, A, B, index_name)(i, j, k, l);
+                                product_<Matrix3D<T>, Matrix3D<T>>(*this, A, B, index_name)(i, j, k, l);
+                            }
+                        }
+            });
+        return *this;
+    }
+    ///Product 4D
+    Matrix4D<T>& prod (Matrix4D<T> const& A, Matrix3D<T> const& B, char index_name) {
+        if(index_name == 'i'){
+            SizeMatrix3D_context const sizes(size(0), size(0), size(0));
+            proto::eval(proto::as_expr<Matrix3D_domain>(B), sizes);
+        }
+        if(index_name == 'j'){
+            SizeMatrix3D_context const sizes(size(1), size(1), size(1));
+            proto::eval(proto::as_expr<Matrix3D_domain>(B), sizes);
+        }
+        if(index_name == 'k'){
+            SizeMatrix3D_context const sizes(size(2), size(2), size(2));
+            proto::eval(proto::as_expr<Matrix3D_domain>(B), sizes);
+        }
+        SizeMatrix4D_context const sizes(size(0), size(1), size(2), size(3));
+        proto::eval(proto::as_expr<Matrix4D_domain>(A), sizes);
+        tbb::parallel_for(range_tbb({ 0, size(0) }, { 0, size(1) }, { 0, size(2) }, { 0, size(3) }),
+            [&](const range_tbb& out) {
+                const auto& out_i = out.dim(0);
+                const auto& out_j = out.dim(1);
+                const auto& out_k = out.dim(2);
+                const auto& out_l = out.dim(3);
+                for (size_t i = out_i.begin(); i < out_i.end(); ++i)
+                    for (size_t j = out_j.begin(); j < out_j.end(); ++j)
+                        for (size_t k = out_k.begin(); k < out_k.end(); ++k) {
+                            for (size_t l = out_l.begin(); l < out_l.end(); ++l) {
+                                product_<Matrix4D<T>, Matrix3D<T>>(*this, A, B, index_name)(i, j, k, l);
                             }
                         }
             });
