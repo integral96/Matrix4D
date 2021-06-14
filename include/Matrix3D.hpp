@@ -93,23 +93,24 @@ namespace _spatial {
         using range = boost::multi_array_types::index_range;
         using sub_matrix_view2D = typename matrix3_<T>::sub_matrix_view2D;
         using sub_matrix_view3D = typename matrix3_<T>::sub_matrix_view3D;
+
         ///Product struct on 2D matrix
         struct product2D_closure {
         private:
             const Matrix3D<T>& A;
             const Matrix2D<T>& a;
-            char index_name;
         public:
-            product2D_closure(const Matrix3D<T>& A_, const Matrix2D<T>& a_, char index_name_) :
-             A(A_), a(a_), index_name(index_name_) {}
+            product2D_closure(const Matrix3D<T>& A_, const Matrix2D<T>& a_) :
+             A(A_), a(a_) {}
+            template<char index_name>
             T value(size_t K, size_t i, size_t j, size_t k) const {
-                if(index_name == 'i') {
+                if constexpr(index_name == 'i') {
                     return proto::value(A)(K, j, k)*proto::value(a)(K, i);
                 }
-                if(index_name == 'j') {
+                if constexpr(index_name == 'j') {
                     return proto::value(A)(i, K, k)*proto::value(a)(K, j);
                 }
-                if(index_name == 'k') {
+                if constexpr(index_name == 'k') {
                     return proto::value(A)(i, j, K)*proto::value(a)(K, k);
                 }
             }
@@ -119,31 +120,32 @@ namespace _spatial {
             Matrix3D<T>& this_;
             const Matrix3D<T>& A;
             const Matrix2D<T>& a;
-            char index_name;
             T result;
+            template<char index_name>
             const T summ_(product2D_closure& closure, size_t i, size_t j, size_t k) {
-                if(index_name == 'i') {
+                if constexpr(index_name == 'i') {
                     for(size_t K = 0; K < proto::value(this_).shape()[0]; ++K)
-                        result += closure.value(K, i, j, k);
+                        result += closure.template value<'i'>(K, i, j, k);
                     return result;
                 }
-                if(index_name == 'j') {
+                if constexpr(index_name == 'j') {
                     for(size_t K = 0; K < proto::value(this_).shape()[1]; ++K)
-                        result += closure.value(K, i, j, k);
+                        result += closure.template value<'j'>(K, i, j, k);
                     return result;
                 }
-                if(index_name == 'k') {
+                if constexpr(index_name == 'k') {
                     for(size_t K = 0; K < proto::value(this_).shape()[2]; ++K)
-                        result += closure.value(K, i, j, k);
+                        result += closure.template value<'k'>(K, i, j, k);
                     return result;
                 }
             }
         public:
-            product2D_(Matrix3D<T>& this_, const Matrix3D<T>& A_, const Matrix2D<T>& a_, char index_name_) :
-            this_(this_), A(A_), a(a_), index_name(index_name_) {}
-            void operator()(size_t i, size_t j, size_t k) {
-                product2D_closure closure(A, a, index_name);
-                proto::value(this_)(i, j, k) = summ_(closure, i, j, k);
+            product2D_(Matrix3D<T>& this_, const Matrix3D<T>& A_, const Matrix2D<T>& a_) :
+            this_(this_), A(A_), a(a_) {}
+            template<char index_name>
+            void init(size_t i, size_t j, size_t k) {
+                product2D_closure closure(A, a);
+                proto::value(this_)(i, j, k) = summ_<index_name>(closure, i, j, k);
             }
         };
 
@@ -183,7 +185,7 @@ namespace _spatial {
                     for(size_t i = 0; i < size(0); ++i)
                         for(size_t j = 0; j < size(1); ++j)
                             for(size_t k = 0; k < size(2); ++k)
-                                    proto::value(*this)(i, j, k) = dist(gen);
+                                proto::value(*this)(i, j, k) = dist(gen);
                 }
         }
         template< typename Expr >
@@ -261,17 +263,17 @@ namespace _spatial {
                 });
             return matrix;
         }
-
-        Matrix3D<T>& prod (Matrix3D<T> const& A, Matrix2D<T> const& B, char index_name) {
-            if(index_name == 'i'){
+        template<char index_name>
+        Matrix3D<T>& prod (Matrix3D<T> const& A, Matrix2D<T> const& B) {
+            if constexpr(index_name == 'i'){
                 SizeMatrix2D_context const sizes(size(0), size(0));
                 proto::eval(proto::as_expr<Matrix2D_domain>(A), sizes);
             }
-            if(index_name == 'j'){
+            if constexpr(index_name == 'j'){
                 SizeMatrix2D_context const sizes(size(1), size(1));
                 proto::eval(proto::as_expr<Matrix2D_domain>(A), sizes);
             }
-            if(index_name == 'k'){
+            if constexpr(index_name == 'k'){
                 SizeMatrix2D_context const sizes(size(2), size(2));
                 proto::eval(proto::as_expr<Matrix2D_domain>(A), sizes);
             }
@@ -285,7 +287,7 @@ namespace _spatial {
                     for (size_t i = out_i.begin(); i < out_i.end(); ++i)
                         for (size_t j = out_j.begin(); j < out_j.end(); ++j)
                             for (size_t k = out_k.begin(); k < out_k.end(); ++k) {
-                                product2D_(*this, A, B, index_name)(i, j, k);
+                                product2D_(*this, A, B).template init<index_name>(i, j, k);
                             }
                 });
             return *this;
@@ -305,43 +307,44 @@ namespace _spatial {
                 });
             return matrix;
         }
-
-        Matrix2D<T> transversal_matrix(char index, int N) {
-            BOOST_ASSERT_MSG((index == 'i') || (index == 'j') || (index == 'k') , "Не совпадение индексов");
+        template<char index>
+        Matrix2D<T> transversal_matrix(int N) {
+            BOOST_STATIC_ASSERT_MSG((index == 'i') || (index == 'j') || (index == 'k') , "Не совпадение индексов");
             typename array_type::index_gen indices;
-            if (index == 'i') {
+            if constexpr(index == 'i') {
                 std::array<size_t, 2> shi{ {size(1), size(2)} };
                 Matrix2D<T> tmp(shi);
                 tmp = proto::value(*this)[indices[N][range(0, size(1))][range(0, size(2))]];
                 return tmp;
-            } else if (index == 'j') {
+            } else if constexpr(index == 'j') {
                 std::array<size_t, 2> shj{ {size(0), size(2)} };
                 Matrix2D<T> tmp(shj);
                 tmp = proto::value(*this)[indices[range(0, size(0))][N][range(0, size(2))]];
                 return tmp;
-            } else if (index == 'k') {
+            } else if constexpr(index == 'k') {
                 std::array<size_t, 2> shk{ {size(0), size(1)} };
                 Matrix2D<T> tmp(shk);
                 tmp = proto::value(*this)[indices[range(0, size(0))][range(0, size(1))][N]];
                 return tmp;
             }
         }
-        std::vector<T> transversal_vector(char index, int N)  {
-            BOOST_ASSERT_MSG((index == 'i') || (index == 'j') || (index == 'k') , "Не совпадение индексов");
+        template<char index>
+        std::vector<T> transversal_vector(int N)  {
+            BOOST_STATIC_ASSERT_MSG((index == 'i') || (index == 'j') || (index == 'k') , "Не совпадение индексов");
             typename array_type::index_gen indices;
             std::vector<T> transversal_vector;
             transversal_vector.reserve(size(0)*size(1)*size(2));
             struct index3D { int I; int J; int K; };
             auto predicate([s_ = std::max({size(0), size(1), size(2)})]
-                           (std::vector<index3D>& index) {
+                           (std::vector<index3D>& index_) {
                 for(int i = 0; i < s_; ++i) {
-                    if((index.at(i).I != index.at(i + 1).I) &&
-                            (index.at(i).J == index.at(i + 1).K ||
-                            index.at(i).K == index.at(i + 1).J)) return true;
+                    if((index_.at(i).I != index_.at(i + 1).I) &&
+                            (index_.at(i).J == index_.at(i + 1).K ||
+                            index_.at(i).K == index_.at(i + 1).J)) return true;
                     else return false;
                 }
             });
-            if (index == 'i') {
+            if constexpr(index == 'i') {
                 std::vector<index3D> index_vector;
                 index_vector.reserve(size(0)*size(1)*size(2));
                 for (size_t j = 0; j != size(1); ++j) {
@@ -349,11 +352,11 @@ namespace _spatial {
                         index_vector.push_back({(int)N, int(j), int(k)});
                         index_vector.push_back({(int)(N + 1), int(j), int(k)});
                         if(predicate(index_vector)){
-                            transversal_vector.push_back(transversal_matrix('i', N)(j, k));
+                            transversal_vector.push_back(transversal_matrix<index>(N)(j, k));
                         }
                     }
                 }
-            } else if (index == 'j') {
+            } else if constexpr(index == 'j') {
                 std::vector<index3D> index_vector;
                 index_vector.reserve(size(0)*size(1)*size(2));
                 for (size_t i = 0; i != size(0); ++i) {
@@ -361,11 +364,11 @@ namespace _spatial {
                         index_vector.push_back({(int)N, int(i), int(k)});
                         index_vector.push_back({(int)(N + 1), int(i), int(k)});
                         if(predicate(index_vector)){
-                            transversal_vector.push_back(transversal_matrix('j', N)(i, k));
+                            transversal_vector.push_back(transversal_matrix<index>(N)(i, k));
                         }
                     }
                 }
-            } else if (index == 'k') {
+            } else if constexpr(index == 'k') {
                 std::vector<index3D> index_vector;
                 index_vector.reserve(size(0)*size(1)*size(2));
                 for (size_t i = 0; i != size(0); ++i) {
@@ -373,33 +376,33 @@ namespace _spatial {
                         index_vector.push_back({(int)N, int(i), int(j)});
                         index_vector.push_back({(int)(N + 1), int(i), int(j)});
                         if(predicate(index_vector)){
-                            transversal_vector.push_back(transversal_matrix('k', N)(i, j));
+                            transversal_vector.push_back(transversal_matrix<index>(N)(i, j));
                         }
                     }
                 }
             }
             return transversal_vector;
         }
-
-        T DET_orient(char index, int N) {
-            BOOST_ASSERT_MSG((index == 'i') || (index == 'j') || (index == 'k') , "Не совпадение индексов");
-            if(index == 'i') {
+        template<char index>
+        T DET_orient(int N) {
+            BOOST_STATIC_ASSERT_MSG((index == 'i') || (index == 'j') || (index == 'k') , "Не совпадение индексов");
+            if constexpr(index == 'i') {
                 return tbb::parallel_reduce(tbb::blocked_range<size_t>(0, size(0)), T(1),
                         [this, &N](const tbb::blocked_range<size_t>& r, T tmp) {
                             for (size_t i = r.begin(); i != r.end(); ++i) {
-                                tmp *= transversal_vector('i', N)[i];
+                                tmp *= transversal_vector<index>(N)[i];
                             } return tmp; }, std::multiplies<T>());
-            } else if(index == 'j') {
+            } else if constexpr(index == 'j') {
                 return tbb::parallel_reduce(tbb::blocked_range<size_t>(0, size(1)), T(1),
                         [this, &N](const tbb::blocked_range<size_t>& r, T tmp) {
                             for (size_t i = r.begin(); i != r.end(); ++i) {
-                                tmp *= transversal_vector('j', N)[i];
+                                tmp *= transversal_vector<index>(N)[i];
                             } return tmp; }, std::multiplies<T>());
-            } else if(index == 'k') {
+            } else if constexpr(index == 'k') {
                 return tbb::parallel_reduce(tbb::blocked_range<size_t>(0, size(2)), T(1),
                         [this, &N](const tbb::blocked_range<size_t>& r, T tmp) {
                             for (size_t i = r.begin(); i != r.end(); ++i) {
-                                tmp *= transversal_vector('k', N)[i];
+                                tmp *= transversal_vector<index>(N)[i];
                             } return tmp; }, std::multiplies<T>());
             }
         }
@@ -412,7 +415,7 @@ namespace _spatial {
                     for (size_t i = out_i.begin(); i < out_i.end(); ++i)
                         for (size_t j = out_j.begin(); j < out_j.end(); ++j)
                             for (size_t k = out_k.begin(); k < out_k.end(); ++k)
-                                tmp += std::pow(-1, _my::invers<3>(i, j, k))*DET_orient('i', i)*DET_orient('j', j)*DET_orient('k', k);
+                                tmp += std::pow(-1, _my::invers<3>(i, j, k))*DET_orient<'i'>(i)*DET_orient<'j'>(j)*DET_orient<'k'>(k);
                     return tmp; }, std::plus<T>() );
         }
         ///trilinear form
